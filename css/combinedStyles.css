@@ -709,15 +709,24 @@ input[type=number] {
 }
  
 .icon-etherdelta:before { content: '\e800'; } /* '' */
+.icon-airswap:before { content: '\e801'; } /* '' */
 .icon-tokenstore:before { content: '\e802'; } /* '' */
 .icon-zrx:before { content: '\e803'; } /* '' */
 .icon-info:before { content: '\e804'; } /* '' */
 .icon-link:before { content: '\e805'; } /* '' */
+.icon-oasis:before { content: '\e806'; } /* '' */
+.icon-kyber:before { content: '\e807'; } /* '' */
 .icon-github:before { content: '\f09b'; } /* '' */
 .icon-recent:before { content: '\f133'; } /* '' */
 .icon-balances:before { content: '\f19c'; } /* '' */
 .icon-decentrex:before { content: '\f1c0'; } /* '' */
+.icon-box:before { content: '\f187'; } /* '' */
+.icon-book:before { content: '\e808'; } /* '' */
 
 .tooltip-inner {
   max-width: 500px;
+}
+
+.text75 {
+    font-size:75%;
 }

@@ -521,6 +521,12 @@
 					var parsedOutput = parseOutput(tx, txLog.logs);
 					transaction.output = parsedOutput.output;
 					transaction.outputErrors = parsedOutput.errors;
+
+					if (parsedOutput.output && parsedOutput.output[0]) {
+						if (!parsedOutput.output[0].error && (parsedOutput.output[0].type == '0x Error' || parsedOutput.output[0].type == 'AirSwap Error')) {
+							transaction.status = 'Failed';
+						}
+					}
 				}
 				else {
 					transaction.status = 'Error';
@@ -558,21 +564,20 @@
 						if (obj && !obj.error) {
 							if (obj && obj.token && obj.token.name === "???" && obj.token.unknown)
 								unknownToken = true;
-							if (unpacked.name === 'Trade') {
-								delete obj.fee;
+							if (unpacked.name === 'Trade' || unpacked.name == 'Filled' || unpacked.name === 'ExecuteTrade' || unpacked.name == 'LogTake') {
+                                obj.feeToken = obj.feeCurrency;
 								delete obj.feeCurrency;
 								delete obj.transType;
 								delete obj.tradeType;
 							} else if (unpacked.name === 'LogFill') {
-								let relay = obj.relayer;
 								delete obj.transType;
 								delete obj.tradeType;
 								delete obj.relayer;
 								obj.feeToken = obj.feeCurrency;
 								delete obj.feeCurrency;
-								if (relay)
-									obj.relayer = relay;
-							}
+							} else if(unpacked.name === 'LogCancel') {
+                                delete obj.relayer;
+                            }
 							outputs.push(obj);
 						} else {
 							unknownEvents++;
@@ -595,6 +600,12 @@
 					for (let i = 0; i < obj.length; i++) {
 						if (obj[i] && obj[i].token && obj[i].token.name === "???" && obj[i].token.unknown)
 							unknownToken = true;
+                        if(obj[i].relayer)
+                            delete obj[i].relayer;
+                        if(obj[i].feeCurrency) {
+                            obj[i].feeToken = obj[i].feeCurrency;
+							delete obj[i].feeCurrency;
+                        }
 					}
 				}
 				return obj;
@@ -651,13 +662,20 @@
 		else if (transaction.status === 'Pending') {
 			sum += 'Status: Transaction is pending, try again later. For a faster transaction raise your gas price next time.<br> Pending for a really long time? Try to <a href="https://www.reddit.com/r/EtherDelta/comments/72tctz/guide_how_to_cancel_a_pending_transaction/" target="_blank">cancel or replace</a> it. <br>';
 		}
-		else if (transaction.status === 'Error: Bad jump destination') {
+		else if (transaction.status === 'Error: Bad jump destination' || transaction.status === 'Error: Reverted') {
 			if (transaction.input[0].type === 'Taker Sell' || transaction.input[0].type === 'Taker Buy') {
-				sum += 'Status: Bad jump destination, someone filled this order before you. (Sent earlier or with a higher gas price).<br>';
+				sum += 'Status: transaction failed, order already filled or cancelled.<br>';
 			}
 			else if (transaction.input[0].type === 'Token Deposit' || transaction.input[0].type === 'Token Withdraw') {
-				sum += 'Status: Bad jump destination, token deposit/withdraw failed. You might not have had the right account balance left. Otherwise check if the token is not locked. (Still in ICO, rewards period, disabled etc.)<br>';
-			}
+				sum += 'Status: transaction failed, you might not have had the right account balance left. Otherwise check if the token is not locked. (Still in ICO, rewards period, disabled etc.)<br><br>';
+			} else if (transaction.input[0].type === 'Deposit' || transaction.input[0].type === 'Withdraw') {
+				sum += 'Status: transaction failed, you might not have had the right account balance left.<br>';
+			} 
+            else {
+                sum += 'Status: transaction failed.';
+            }
+		} else if (transaction.status === 'Failed') {
+			sum += 'Status: Exchange operation failed.<br>';
 		} else {
 			sum += 'Status: Transaction failed.<br>';
 		}
@@ -678,6 +696,10 @@
 					}
 				}
 			}
+            if(transaction.input[0].type.indexOf('aker') !== -1 && transaction.input[0].exchange == _delta.addressName(_delta.config.contractIdexAddr)) {
+                sum += '<br>Note: IDEX uses no transaction output events.';
+            }
+            
 		} else if (transaction.output && transaction.output.length > 0) {
 			for (let i = 0; i < transaction.output.length; i++) {
 				if (transaction.output[i].note) {
@@ -873,6 +895,9 @@
 				uniqueType = 'cancel';
 				wideOutput = true;
 			}
+			else if (uniqueType.indexOf(' up to') !== -1 || uniqueType.indexOf('offer') !== -1) {
+				wideOutput = true;
+			}
 			if (!types[uniqueType])
 				types[uniqueType] = [];
 
@@ -957,27 +982,27 @@
 				if (columns[keys[i]]) {
 
 					var cellValue = myList[i];
-					if (keys[i] == 'token' || keys[i] == 'base' || keys[i] == 'feeToken' || keys[i] == 'token In' || keys[i] == 'token Out') {
+					if (keys[i] == 'token' || keys[i] == 'base' || keys[i] == 'feeToken' || keys[i] == 'FeeToken ' || keys[i] == 'FeeToken'  || keys[i] == 'token In' || keys[i] == 'token Out') {
 
-						let token = myList[i];
-						let popoverContents = _delta.makePopoverContents(token);
-						let labelClass = 'label-warning';
-						if (!token.unlisted && !token.unknown)
-							labelClass = 'label-primary';
+						let token = cellValue;
+                        if(token) {
+                            let popoverContents = _delta.makePopoverContents(token);
+                            let labelClass = 'label-warning';
+                            if (!token.unlisted && !token.unknown)
+                                labelClass = 'label-primary';
 
-						cellValue = '<a tabindex="0" class="label ' + labelClass + '" role="button" data-html="true" data-toggle="popover" data-placement="auto right"  title="' + token.name + '" data-container="body" data-content=\'' + popoverContents + '\'>' + token.name + '</a>';
-					}
+                            cellValue = '<a tabindex="0" class="label ' + labelClass + '" role="button" data-html="true" data-toggle="popover" data-placement="auto right"  title="' + token.name + '" data-container="body" data-content=\'' + popoverContents + '\'>' + token.name + '</a>';
+                        }
+                    }
 					else if (keys[i] == 'price' || keys[i] == 'minPrice' || keys[i] == 'maxPrice') {
 						cellValue = '<span data-toggle="tooltip" title="' + cellValue.toString() + '">' + cellValue.toFixed(5) + '</span>';
 					}
-					else if (keys[i] == 'order size' || keys[i] == 'amount' || keys[i] == 'baseAmount' || keys[i] == 'fee' || keys[i] == 'balance') {
+					else if (keys[i] == 'order size' || keys[i] == 'amount' || keys[i] == 'estAmount' || keys[i] == 'baseAmount' || keys[i] == 'estBaseAmount' || keys[i] == 'fee' || keys[i] == 'takerFee' || keys[i] == 'makerFee' || keys[i] == 'balance') {
 						cellValue = '<span data-toggle="tooltip" title="' + cellValue.toString() + '">' + cellValue.toFixed(3) + '</span>';
 					}
 					else if (keys[i] == 'seller' || keys[i] == 'buyer' || keys[i] == 'to' || keys[i] == 'sender' || keys[i] == 'from' || keys[i] == 'maker' || keys[i] == 'taker' || keys[i] == 'wallet') {
-						cellValue = _util.addressLink(cellValue, true, true);
-					}
-					else if (keys[i] == 'relayer') {
-						cellValue = _util.relayName(cellValue);
+						if (cellValue)
+							cellValue = _util.addressLink(cellValue, true, true);
 					}
 
 					if (cellValue == null) cellValue = "";
@@ -1018,6 +1043,10 @@
 					columnSet[key] = 1;
 					if (key === 'baseAmount')
 						key = 'Total';
+					else if (key === 'estBaseAmount')
+						key = 'Est. Total';
+					else if (key === 'estAmount')
+						key = 'Est. Amount';
 					headerTr$.append($('<th/>').html(capitalizeFirstLetter(key)));
 				}
 			}

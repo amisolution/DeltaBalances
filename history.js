@@ -58,7 +58,7 @@
 	// placeholder
 	var transactionsPlaceholder = [
 		{
-			Relayer: '0x',
+			Exchange: 'Placeholder',
 			Type: 'Taker',
 			Trade: 'Sell',
 			Token: { "name": "Token", "addr": "" },
@@ -69,6 +69,7 @@
 			Hash: '0xH4SH1',
 			Date: _util.toDateTimeNow(),
 			Block: '',
+			Opponent: '',
 			Buyer: '',
 			Seller: '',
 			Fee: 0,
@@ -78,6 +79,7 @@
 			Unlisted: true,
 		},
 		/*{
+			Exchange: '',
 			Type: 'Deposit',
 			Trade: '',
 			Token: { "name": "Token", "addr": "0x00" },
@@ -625,12 +627,22 @@
 	function getTransactions(rqid) {
 
 		var topics = [];
-		if (typeMode == 0)
-			topics = [historyConfig.tradeTopic];
-		else if (typeMode == 1)
+		if (typeMode == 0) {
+			// kyber and oasisdex, use address in topic filter for speedup
+			if (historyConfig.userIndexed && historyConfig.userTopic == 1) {
+				let myTopicAddr = "0x000000000000000000000000" + publicAddr.slice(2).toLowerCase();
+				//for Kyber, add user topic to search for speedup
+				topics = [historyConfig.tradeTopic, myTopicAddr];
+			}
+			else
+				topics = [historyConfig.tradeTopic];
+		}
+		else if (typeMode == 1) {
 			topics = [[historyConfig.depositTopic, historyConfig.withdrawTopic]];
-		else
+		}
+		else {
 			topics = [[historyConfig.tradeTopic, historyConfig.depositTopic, historyConfig.withdrawTopic]];
+		}
 
 		var start = startblock;
 		var end = endblock;
@@ -643,7 +655,16 @@
 		setBlockProgress(downloadedBlocks, totalBlocks, 0);
 
 		var tradeLogResult = [];
-		const contractAddr = _delta.config[historyConfig.exchangeAddr]; //_delta.config.contractEtherDeltaAddr.toLowerCase();
+		var contractAddr = '';
+		let addrVarName = historyConfig.exchangeAddr;
+		if (Array.isArray(addrVarName)) {
+			contractAddr = [];
+			for (let i = 0; i < addrVarName.length; i++) {
+				contractAddr.push(_delta.config[addrVarName[i]]);
+			}
+		} else {
+			contractAddr = _delta.config[addrVarName];
+		}
 
 		var reqAmount = 0;
 		for (var i = start; i <= end; i += (max + 1)) {
@@ -768,9 +789,37 @@
 			var myAddr = publicAddr.toLowerCase();
 			var addrrr = myAddr.slice(2);
 
-			let filteredLogs = outputLogs.filter((log) => {
-				return log.data.indexOf(addrrr) !== -1;
-			});
+			let filteredLogs;
+
+			//kyber check only topic1
+			if (historyConfig == _delta.config.historyKyber) {
+				filteredLogs = outputLogs.filter((log) => {
+					return log.topics[historyConfig.userTopic].indexOf(addrrr) !== -1;
+				});
+			}
+			// oasis, check only topic 2 && 3
+			else if (historyConfig == _delta.config.historyOasisDex) {
+				filteredLogs = outputLogs.filter((log) => {
+					return log.topics[2].indexOf(addrrr) !== -1 || log.topics[3].indexOf(addrrr) !== -1;
+				});
+			}
+			else {
+				filteredLogs = outputLogs.filter((log) => {
+					if (log.data.indexOf(addrrr) !== -1) {
+						return true;
+					} else if (log.topics.length <= 1) {
+						return false;
+					}
+					else {
+						// start at 1, topic 0  is event signature
+						for (let i = 1; i < log.topics.length; i++) {
+							if (log.topics[i].indexOf(addrrr) !== -1)
+								return true;
+						}
+					}
+				});
+			}
+
 
 			//if from etherscan, timestamp is included
 			// from web3/infura, no timestamp
@@ -788,7 +837,7 @@
 			for (let i = 0; i < unpackedLogs.length; i++) {
 
 				let unpacked = unpackedLogs[i];
-				if (!unpacked || unpacked.events.length < 4 || (unpacked.name != 'Trade' && unpacked.name != 'LogFill' && unpacked.name != 'Deposit' && unpacked.name != 'Withdraw')) {
+				if (!unpacked || unpacked.events.length < 4 || (unpacked.name != 'Trade' && unpacked.name != 'LogFill' && unpacked.name !== 'ExecuteTrade' && unpacked.name !== 'LogTake' && unpacked.name != 'Filled' && unpacked.name != 'Deposit' && unpacked.name != 'Withdraw')) {
 					continue;
 				}
 
@@ -796,10 +845,17 @@
 				if (obj && !obj.error) {
 
 					var obj2 = undefined;
-					if (unpacked.name == 'Trade' || unpacked.name == 'LogFill') {
+					if (unpacked.name == 'Trade' || unpacked.name == 'LogFill' || unpacked.name == 'Filled' || unpacked.name == 'ExecuteTrade' || unpacked.name == 'LogTake') {
 						if (_util.isWrappedETH(obj.base.addr) || _util.isNonEthBase(obj.base.addr)) {
+
+							let opp = '';
+							if (obj.tradeType == 'Buy') {
+								opp = obj.seller;
+							} else if (obj.tradeType == 'Sell') {
+								opp = obj.buyer;
+							}
 							obj2 = {
-								Relayer: '',
+								Exchange: obj.exchange,
 								Type: obj.transType,
 								Trade: obj.tradeType,
 								Token: obj.token,
@@ -810,22 +866,26 @@
 								Hash: filteredLogs[i].transactionHash,
 								Date: '??', // retrieved by later etherscan call
 								Block: _util.hexToDec(filteredLogs[i].blockNumber),
+								Opponent: opp,
 								Buyer: obj.buyer,
 								Seller: obj.seller,
-								Fee: (!obj.fee || !obj.fee.greaterThan(0)) ? '' : obj.fee,
+								Fee: (!obj.fee || !obj.fee.greaterThan(0)) ? 0 : obj.fee,
 								FeeToken: obj.feeCurrency,
 								'Fee in': obj.feeCurrency,
 								Info: window.location.origin + window.location.pathname + '/../tx.html#' + filteredLogs[i].transactionHash,
 								Unlisted: obj.unlisted,
 							};
+
+							if (!obj.feeCurrency || obj.feeCurrency == "" || obj.feeCurrency == undefined) {
+								obj2.FeeToken = { name: '', addr: '' }; // make compatible with export
+							}
 							if (obj.relayer) {
-								obj2.Relayer = _util.relayName(obj.relayer);
-							} else {
-								delete obj2.Relayer;
+								tradeHeaders['Exchange'] = 1;
 							}
 						}
 					} else if (unpacked.name == 'Deposit' || unpacked.name == 'Withdraw') {
 						obj2 = {
+                            Exchange: obj.exchange,
 							Type: obj.type.replace('Token ', ''),
 							Trade: '',
 							Token: obj.token,
@@ -836,6 +896,7 @@
 							Hash: filteredLogs[i].transactionHash,
 							Date: '??', // retrieved by later etherscan call
 							Block: _util.hexToDec(filteredLogs[i].blockNumber),
+                            Opponent:'',
 							Buyer: '',
 							Seller: '',
 							Fee: '',
@@ -888,6 +949,9 @@
 		var filtered = result;
 		var loaded = tableLoaded;
 
+		if (historyConfig.showRelayers || Array.isArray(historyConfig.exchangeAddr)) {
+			tradeHeaders['Exchange'] = 1;
+		}
 		buildHtmlTable('#transactionsTable', filtered, loaded, tradeHeaders);
 		trigger();
 	}
@@ -983,7 +1047,7 @@
 		} else {
 			$("#transactionsTable thead th").data("sorter", true);
 			let defaultSortIndex = 7;
-			if (historyConfig.showRelayers)
+			if (historyConfig.showRelayers || Array.isArray(historyConfig.exchangeAddr))
 				defaultSortIndex = 8;
 			$("#transactionsTable").tablesorter({
 				textExtraction: {
@@ -1027,41 +1091,41 @@
 				continue;
 			var row$ = $('<tr/>');
 
+			for (var colIndex = 0; colIndex < columns.length; colIndex++) {
+				var head = columns[colIndex];
+				var cellValue = myList[i][head];
 
-			{
-				for (var colIndex = 0; colIndex < columns.length; colIndex++) {
-					var head = columns[colIndex];
-					var cellValue = myList[i][head];
-
-					if (cellValue === null) cellValue = "";
+				if (cellValue === null) cellValue = "";
 
 
-					if (head == 'Amount' || head == 'Price' || head == 'Fee' || head == 'Total') {
-						if (head == 'Fee' && myList[i][columns[0]] != 'Taker') {
-							cellValue = '';
-						}
+				if (head == 'Amount' || head == 'Price' || head == 'Fee' || head == 'Total') {
 
-						if (cellValue !== "" && cellValue !== undefined) {
-							var dec = fixedDecimals;
-							if (head == 'Price')
-								dec += 6;
-							else if (head == 'Fee')
-								dec += 2;
-							var num = '<span data-toggle="tooltip" title="' + cellValue.toString() + '">' + cellValue.toFixed(dec) + '</span>';
-							row$.append($('<td/>').html(num));
-						}
-						else {
-							row$.append($('<td/>').html(cellValue));
-						}
+					if (head == 'Fee' && (cellValue == undefined || cellValue == '' || cellValue == 0)) {
+						row$.append($('<td/>').html(''));
 					}
-					else if (head == 'Token' || head == 'Base' || head == 'Fee in') {
-						if ((head == 'Fee in') && myList[i][columns[0]] != 'Taker') {
-							cellValue = '';
-						}
+					else if (cellValue !== "" && cellValue !== undefined) {
+						var dec = fixedDecimals;
+						if (head == 'Price')
+							dec += 6;
+						else if (head == 'Fee')
+							dec += 2;
+						var num = '<span data-toggle="tooltip" title="' + cellValue.toString() + '">' + cellValue.toFixed(dec) + '</span>';
+						row$.append($('<td/>').html(num));
+					}
+					else {
+						row$.append($('<td/>').html(cellValue));
+					}
+				}
+				else if (head == 'Token' || head == 'Base' || head == 'Fee in') {
 
-						if (cellValue !== "" && cellValue !== undefined) {
-
-							let token = cellValue;
+					if (head == 'Fee in' && (myList[i].Fee == undefined || myList[i].Fee == '' || myList[i].Fee == 0)) {
+						row$.append($('<td/>').html(''));
+					}
+					else if (cellValue !== "" && cellValue !== undefined) {
+						let token = cellValue;
+						if (token.name == "") {
+							row$.append($('<td/>').html(""));
+						} else {
 							let popoverContents = _delta.makePopoverContents(token);
 							if (cellValue) {
 								let labelClass = 'label-warning';
@@ -1071,66 +1135,67 @@
 								row$.append($('<td/>').html('<a tabindex="0" class="label ' + labelClass + '" role="button" data-html="true" data-toggle="popover" data-placement="auto right"  title="' + token.name + '" data-container="body" data-content=\'' + popoverContents + '\'>' + token.name + '</a>'));
 							}
 						}
-						else {
-							row$.append($('<td/>').html(cellValue));
-						}
-
-					}
-					else if (head == 'Type') {
-						if (cellValue == 'Taker' || cellValue == 'Maker') {
-							let contents = ''
-							if (cellValue == 'Taker') {
-								contents = '<span class="label label-info" >' + cellValue + '</span>';
-							}
-							else if (cellValue == 'Maker') {
-								contents = '<span class="label label-default" >' + cellValue + '</span>';
-							}
-
-							if (myList[i].Trade == 'Buy') {
-								contents += '<span class="label label-success" >' + myList[i].Trade + '</span>';
-							}
-							else if (myList[i].Trade == 'Sell') {
-								contents += '<span class="label label-danger" >' + myList[i].Trade + '</span>';
-							}
-							row$.append($('<td/>').html(contents));
-
-						} else if (cellValue == 'Deposit') {
-							row$.append($('<td/>').html('<span class="label label-success" >' + cellValue + '</span>'));
-						}
-						else if (cellValue == 'Withdraw') {
-							row$.append($('<td/>').html('<span class="label label-danger" >' + cellValue + '</span>'));
-						} else {
-							row$.append($('<td/>').html('<span>' + cellValue + '</span>'));
-						}
-
-
-					}
-					else if (head == 'Hash') {
-						row$.append($('<td/>').html(_util.hashLink(cellValue, true, true)));
-					}
-					else if (head == 'Block') {
-						row$.append($('<td/>').html('<a target="_blank" href="https://etherscan.io/block/' + cellValue + '">' + cellValue + '</a>'));
-					}
-					else if (head == 'Buyer' || head == 'Seller') {
-						let url = '';
-						if (cellValue !== '')
-							url = _util.addressLink(cellValue, true, true);
-						row$.append($('<td/>').html(url));
-					}
-					else if (head == 'Date') {
-						if (cellValue !== '??')
-							cellValue = _util.formatDate(cellValue, false, true);
-						row$.append($('<td/>').html(cellValue));
-					}
-					else if (head == 'Info') {
-
-						row$.append($('<td/>').html('<a href="' + cellValue + '" target="_blank"><i class="fa fa-ellipsis-h"></i></a>'));
 					}
 					else {
 						row$.append($('<td/>').html(cellValue));
 					}
+
+				}
+				else if (head == 'Type') {
+					if (cellValue == 'Taker' || cellValue == 'Maker') {
+						let contents = ''
+						if (cellValue == 'Taker') {
+							contents = '<span class="label label-info" >' + cellValue + '</span>';
+						}
+						else if (cellValue == 'Maker') {
+							contents = '<span class="label label-default" >' + cellValue + '</span>';
+						}
+
+						if (myList[i].Trade == 'Buy') {
+							contents += '<span class="label label-success" >' + myList[i].Trade + '</span>';
+						}
+						else if (myList[i].Trade == 'Sell') {
+							contents += '<span class="label label-danger" >' + myList[i].Trade + '</span>';
+						}
+						row$.append($('<td/>').html(contents));
+
+					} else if (cellValue == 'Deposit') {
+						row$.append($('<td/>').html('<span class="label label-success" >' + cellValue + '</span>'));
+					}
+					else if (cellValue == 'Withdraw') {
+						row$.append($('<td/>').html('<span class="label label-danger" >' + cellValue + '</span>'));
+					} else {
+						row$.append($('<td/>').html('<span>' + cellValue + '</span>'));
+					}
+
+
+				}
+				else if (head == 'Hash') {
+					row$.append($('<td/>').html(_util.hashLink(cellValue, true, true)));
+				}
+				else if (head == 'Block') {
+					row$.append($('<td/>').html('<a target="_blank" href="https://etherscan.io/block/' + cellValue + '">' + cellValue + '</a>'));
+				}
+				else if (head == 'Opponent' || head == 'Buyer' || head == 'Seller') {
+					let url = '';
+					if (cellValue && cellValue !== '')
+						url = _util.addressLink(cellValue, true, true);
+					row$.append($('<td/>').html(url));
+				}
+				else if (head == 'Date') {
+					if (cellValue !== '??')
+						cellValue = _util.formatDate(cellValue, false, true);
+					row$.append($('<td/>').html(cellValue));
+				}
+				else if (head == 'Info') {
+
+					row$.append($('<td/>').html('<a href="' + cellValue + '" target="_blank"><i class="fa fa-ellipsis-h"></i></a>'));
+				}
+				else {
+					row$.append($('<td/>').html(cellValue));
 				}
 			}
+
 
 			body.append(row$);
 			$('[data-toggle=tooltip]').tooltip({
@@ -1141,7 +1206,7 @@
 		}
 	}
 
-	var tradeHeaders = { 'Type': 1, 'Token': 1, 'Amount': 1, 'Price': 1, 'Base': 1, 'Total': 1, 'Hash': 1, 'Date': 1, 'Buyer': 1, 'Seller': 1, 'Fee': 1, 'Fee in': 1, 'Block': 1, 'Info': 1 };
+	var tradeHeaders = { 'Exchange': 0, 'Type': 1, 'Token': 1, 'Amount': 1, 'Price': 1, 'Base': 1, 'Total': 1, 'Hash': 1, 'Date': 1, 'Opponent': 1, 'Fee': 1, 'Fee in': 1, 'Block': 1, 'Info': 1 };
 	// Adds a header row to the table and returns the set of columns.
 	// Need to do union of keys from all records as some records may not contain
 	// all records.
@@ -1161,7 +1226,7 @@
 		for (var i = 0; i < myList.length; i++) {
 			var rowHash = myList[i];
 			for (var key in rowHash) {
-				if (!columnSet[key] && (headers[key] || (historyConfig.showRelayers && key === 'Relayer'))) {
+				if (!columnSet[key] && (headers[key])) {
 					columnSet[key] = 1;
 					headerTr$.append($('<th/>').html(key));
 				}
@@ -1238,10 +1303,7 @@
 				// initialize array of rows with header row as 1st item
 				for (var i = 0; i < allTrades.length; ++i) {
 
-					let exchange = historyConfig.exchange;
-					if (allTrades[i].Relayer) {
-						exchange = allTrades[i].Relayer;
-					}
+					let exchange = allTrades[i].Exchange;
 
 					var arr = [allTrades[i]['Type'], allTrades[i]['Trade'], allTrades[i]['Token'].name, allTrades[i]['Amount'], allTrades[i]['Price'], allTrades[i]['Base'].name,
 					allTrades[i]['Total'], _util.formatDateOffset(allTrades[i]['Date']), allTrades[i]['Block'], allTrades[i]['Hash'], allTrades[i]['Buyer'], allTrades[i]['Seller'],
@@ -1293,10 +1355,7 @@
 				// initialize array of rows with header row as 1st item
 				for (var i = 0; i < allTrades.length; ++i) {
 
-					let exchange = historyConfig.exchange;
-					if (allTrades[i].Relayer) {
-						exchange = allTrades[i].Relayer;
-					}
+					let exchange = allTrades[i].Exchange;
 					var arr = [allTrades[i]['Type'], allTrades[i]['Token'].name, allTrades[i]['Amount'], _util.formatDateOffset(allTrades[i]['Date']),
 					allTrades[i]['Block'], allTrades[i]['Hash'], allTrades[i]['Token'].addr, exchange];
 
@@ -1350,10 +1409,7 @@
 					var arr = undefined;
 					var memoString = '"Transaction Hash ' + allTrades[i]['Hash'] + " -- " + allTrades[i]['Token'].name + " token contract " + allTrades[i]['Token'].addr + '"';
 
-					let exchange = historyConfig.exchange;
-					if (allTrades[i].Relayer) {
-						exchange = allTrades[i].Relayer;
-					}
+					let exchange = allTrades[i].Exchange;
 
 					//if (allTrades[i]['Trade'] === 'Buy') {
 					arr = [_util.formatDateOffset(allTrades[i]['Date']), allTrades[i]['Trade'].toUpperCase(), exchange, allTrades[i]['Amount'], allTrades[i]['Token'].name, allTrades[i]['Price'], allTrades[i]['Base'].name,
@@ -1412,10 +1468,7 @@
 				// initialize array of rows with header row as 1st item
 				for (var i = 0; i < allTrades.length; ++i) {
 					var arr = [];
-					let exchange = historyConfig.exchange;
-					if (allTrades[i].Relayer) {
-						exchange = allTrades[i].Relayer;
-					}
+					let exchange = allTrades[i].Exchange;
 
 					if (allTrades[i]['Trade'] === 'Buy') { //buy add fee to eth total
 						arr = ['Trade', allTrades[i]['Amount'], allTrades[i]['Token'].name, allTrades[i]['Total'].plus(allTrades[i]['Fee']), allTrades[i]['Base'].name, allTrades[i]['Fee'], allTrades[i]['FeeToken'].name,
@@ -1473,10 +1526,7 @@
 				// initialize array of rows with header row as 1st item
 				for (var i = 0; i < allTrades.length; ++i) {
 					var arr = [];
-					let exchange = historyConfig.exchange;
-					if (allTrades[i].Relayer) {
-						exchange = allTrades[i].Relayer;
-					}
+					let exchange = allTrades[i].Exchange;
 
 					if (allTrades[i]['Type'] === 'Deposit') { // deposit is 'buy'
 						arr = ['Deposit', allTrades[i]['Amount'], allTrades[i]['Token'].name, "", "", "", "",
@@ -1536,10 +1586,8 @@
 				// initialize array of rows with header row as 1st item
 				for (var i = 0; i < allTrades.length; ++i) {
 					var arr = [];
-					let exchange = historyConfig.exchange;
-					if (allTrades[i].Relayer) {
-						exchange = allTrades[i].Relayer;
-					}
+					let exchange = allTrades[i].Exchange;
+
 					if (allTrades[i]['Trade'] === 'Buy') { //buy add fee to eth total
 						arr = [_util.formatDateOffset(allTrades[i]['Date']), allTrades[i]['Amount'], allTrades[i]['Token'].name, allTrades[i]['Total'].plus(allTrades[i]['Fee']), allTrades[i]['Base'].name, allTrades[i]['Fee'], allTrades[i]['FeeToken'].name,
 						allTrades[i]['Hash'], 'Hash: ' + allTrades[i]['Hash'] + " -- " + allTrades[i]['Token'].name + " token contract " + allTrades[i]['Token'].addr, exchange, 'Trade'];
@@ -1604,7 +1652,7 @@
 		setStorage();
 		window.location.hash = "";
 		$('#walletInfo').addClass('hidden');
-		if(!publicAddr && !savedAddr && !metamaskAddr) {
+		if (!publicAddr && !savedAddr && !metamaskAddr) {
 			$('#userToggle').click();
 			$('#userToggle').addClass('hidden');
 		}

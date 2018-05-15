@@ -543,7 +543,7 @@
 				if (result && result.status === '1')
 					transResult = result.result;
 				transLoaded++;
-				processTransactions();
+				processTransactions(transResult);
 			}).fail((result) => {
 				if (requestID > rqid)
 					return;
@@ -554,7 +554,7 @@
 				} else {
 					showError('Failed to load recent transactions (deposit, trade & cancel) after 3 tries, try again later.');
 					transLoaded++;
-					processTransactions();
+					processTransactions(transResult);
 				}
 			});
 		}
@@ -567,7 +567,7 @@
 				if (result && result.status === '1')
 					tokenTxResult = result.result;
 				transLoaded++;
-				processTransactions();
+				processTransactions(tokenTxResult);
 			}).fail((result) => {
 				if (requestID > rqid)
 					return;
@@ -578,7 +578,7 @@
 				} else {
 					showError('Failed to load recent transactions (token transfers) after 3 tries, try again later.');
 					transLoaded++;
-					processTransactions();
+					processTransactions(tokenTxResult);
 				}
 			});
 		}
@@ -592,7 +592,7 @@
 				if (result2 && result2.status === '1')
 					inTransResult = result2.result;
 				transLoaded++;
-				processTransactions();
+				processTransactions(inTransResult);
 			}).fail((result) => {
 				if (requestID > rqid)
 					return;
@@ -603,33 +603,37 @@
 				} else {
 					showError('Failed to load recent transactions (withdraws) after 3 tries, try again later.');
 					transLoaded++;
-					processTransactions();
+					processTransactions(inTransResult);
 				}
 			});
 		}
 
 
-		function processTransactions() {
-			var myAddr = publicAddr.toLowerCase();
 
-			var outputTransactions = [];
-			var processedHashes = {};
+
+		var outputHashes = {};
+
+		function processTransactions(resultArray) {
+			var myAddr = publicAddr.toLowerCase();
 			var inputTransactions = [];
 
-			addTransactions(inTransResult);
-			addTransactions(transResult);
-			addTransactions(tokenTxResult);
+			addTransactions(resultArray);
+			var setNewDates = false;
 
-			setBlockStorage();
+			if (setNewDates)
+				setBlockStorage();
 
 			function addTransactions(array) {
 				for (let i = 0; i < array.length; i++) {
 					let tx = array[i];
-					if (!processedHashes[tx.hash]) {
+					if (!outputHashes[tx.hash] || outputHashes[tx.hash].exchange == "") {
 
 						let from = tx.from.toLowerCase();
 						let to = tx.to.toLowerCase();
 						let myAddr = publicAddr.toLowerCase();
+						let contract = tx.contractAddress;
+						if (contract)
+							contract = contract.toLowerCase();
 
 						//save etherscan block dates in cache for tx details & history
 						if (tx.blockNumber) {
@@ -637,13 +641,13 @@
 							let block = tx.blockNumber;
 							if (!blockDates[block]) {
 								blockDates[block] = _util.toDateTime(tx.timeStamp);
+								setNewDates = true;
 							}
 
 							if (Number(block) >= startblock) { // etherscan token events seem to return before startblock
 
 								// if we know a name for this address (token, exhcange, exchangeadmin), it is useful
-								if (_delta.addressName(from) !== from || _delta.addressName(to) !== to || to == myAddr) {
-									processedHashes[tx.hash] = true;
+								if (_delta.addressName(from) !== from || _delta.addressName(to) !== to || to == myAddr || from == myAddr || (contract && _delta.addressName(contract) !== contract)) {
 									inputTransactions.push(tx);
 								}
 							}
@@ -667,30 +671,19 @@
 					tx.isError = '0';  // token events have no error param
 
 				// internal tx (withdraw or unwrap ETH)
-				if (to === myAddr && !contract) {
+				if (to === myAddr && !contract && from !== _delta.config.contractKyberAddr) {
 					if (_delta.isExchangeAddress(from)) {
 						var val = _util.weiToEth(tx.value);
 						var trans = createOutputTransaction('Withdraw', _delta.config.tokens[0], val, '', '', tx.hash, tx.timeStamp, false, '', tx.isError === '0', _delta.addressName(tx.from, false));
-						outputTransactions.push(trans);
+						if (trans && !outputHashes[trans.Hash]) {
+							outputHashes[trans.Hash] = trans;
+						}
 					} else if (_util.isWrappedETH(tx.from)) {
 						var val = _util.weiToEth(tx.value);
 						var trans = createOutputTransaction('Unwrap ETH', _delta.setToken(tx.from), val, _delta.config.tokens[0], val, tx.hash, tx.timeStamp, true, '', tx.isError === '0', '');
-						outputTransactions.push(trans);
-					}
-				}
-				// ETH deposit or ETH wrapping
-				else if (val.greaterThan(0) && !contract) {
-					var val2 = _util.weiToEth(val);
-					// deposit ETH to exchange
-					if (_delta.isExchangeAddress(to)) {
-						var trans = createOutputTransaction('Deposit', _delta.config.tokens[0], val2, '', '', tx.hash, tx.timeStamp, false, '', tx.isError === '0', _delta.addressName(to, false));
-						processedHashes[tx.hash.toLowerCase()] = true;
-						outputTransactions.push(trans);
-					} else if (_util.isWrappedETH(to)) {
-						//wrap ETH to WETH
-						var trans = createOutputTransaction('Wrap ETH', _delta.config.tokens[0], val2, _delta.setToken(to), val2, tx.hash, tx.timeStamp, true, '', tx.isError === '0', '');
-						processedHashes[tx.hash.toLowerCase()] = true;
-						outputTransactions.push(trans);
+						if (trans && !outputHashes[trans.Hash]) {
+							outputHashes[trans.Hash] = trans;
+						}
 					}
 				}
 				// token deposit/withdraw, trades, cancels
@@ -708,8 +701,27 @@
 								let obj = objs[i];
 
 								let trans = undefined;
-								let exchange = _delta.addressName(to, false);
-								if (unpacked.name === 'depositToken' || unpacked.name === 'withdrawToken') {
+								let exchange = obj.exchange;
+								let exName = ''
+								if (!exchange) {
+									exName = _delta.addressName(to, false);
+									if (contract && exName.slice(0, 2) == '0x')
+										exName = _delta.addressName(from, false);
+									if (exName.slice(0, 2) !== '0x')
+										exchange = exName;
+								}
+
+
+								if (unpacked.name === 'deposit') {
+
+									if (obj.type === 'Wrap ETH') {
+										trans = createOutputTransaction(obj.type, obj['token In'], obj.amount, obj['token Out'], obj.amount, tx.hash, tx.timeStamp, true, '', tx.isError === '0', '');
+									} else {
+										trans = createOutputTransaction(obj.type, obj.token, obj.amount, '', '', tx.hash, tx.timeStamp, false, '', tx.isError === '0', _delta.addressName(to, false));
+									}
+
+								}
+								else if (unpacked.name === 'depositToken' || unpacked.name === 'withdrawToken') {
 									obj.type = obj.type.replace('Token ', '');
 									trans = createOutputTransaction(obj.type, obj.token, obj.amount, '', '', tx.hash, tx.timeStamp, obj.unlisted, '', tx.isError === '0', exchange);
 								} else if (unpacked.name === 'adminWithdraw') {
@@ -719,7 +731,12 @@
 									obj.type = obj.type.replace('Token ', '');
 									trans = createOutputTransaction(obj.type, obj.token, obj.amount, '', '', tx.hash, tx.timeStamp, obj.unlisted, '', tx.isError === '0', exchange);
 								}
-								else if (unpacked.name === 'cancelOrder' || unpacked.name === 'batchCancelOrders') {
+								else if ((unpacked.name == 'kill' || unpacked.name == 'cancel') && unpacked.params.length == 1) {
+									trans = createOutputTransaction(obj.type, undefined, undefined, undefined, undefined, tx.hash, tx.timeStamp, undefined, undefined, tx.isError === '0', exchange);
+								} else if (unpacked.name == 'buy' && unpacked.params.length == 2) {
+									trans = createOutputTransaction(obj.type, undefined, undefined, undefined, undefined, tx.hash, tx.timeStamp, undefined, undefined, tx.isError === '0', exchange);
+								}
+								else if (unpacked.name === 'cancelOrder' || unpacked.name === 'batchCancelOrders' || unpacked.name === 'cancel') {
 									let cancelAmount = '';
 									if (obj.baseAmount)
 										cancelAmount = obj.baseAmount;
@@ -731,14 +748,27 @@
 									}
 									trans = createOutputTransaction(obj.type, obj.token, obj.amount, obj.base, cancelAmount, tx.hash, tx.timeStamp, obj.unlisted, obj.price, tx.isError === '0', exchange);
 								}
-								else if (unpacked.name === 'trade') {
-									trans = createOutputTransaction(obj.type, obj.token, obj.amount, obj.base, obj.baseAmount, tx.hash, tx.timeStamp, obj.unlisted, obj.price, tx.isError === '0', exchange);
+								else if (unpacked.name === 'trade' || unpacked.name === 'fill') {
+
+									if (unpacked.name === 'trade' && unpacked.params.length === 7) {
+										//kyber only
+										if (obj.type == 'Buy up to') {
+											trans = createOutputTransaction(obj.type, obj.token, undefined, obj.base, obj.baseAmount, tx.hash, tx.timeStamp, obj.unlisted, obj.maxPrice, tx.isError === '0', exchange);
+										} else {
+											trans = createOutputTransaction(obj.type, obj.token, obj.amount, obj.base, undefined, tx.hash, tx.timeStamp, obj.unlisted, obj.minPrice, tx.isError === '0', exchange);
+										}
+									} else {
+										// other trade
+										trans = createOutputTransaction(obj.type, obj.token, obj.amount, obj.base, obj.baseAmount, tx.hash, tx.timeStamp, obj.unlisted, obj.price, tx.isError === '0', exchange);
+									}
 								}
 								else if (unpacked.name === 'approve') {
-									if (_delta.isExchangeAddress(obj.to)) {
-										exchange = _delta.addressName(obj.to.toLowerCase(), false);
-									} else {
-										exchange = '';
+									if (!exchange) {
+										if (_delta.isExchangeAddress(obj.to)) {
+											exchange = _delta.addressName(obj.to.toLowerCase(), false);
+										} else {
+											exchange = '';
+										}
 									}
 									if (obj.amount.greaterThan(999999999999999))
 										obj.amount = '';
@@ -750,7 +780,8 @@
 									|| unpacked.name === 'batchFillOrKillOrders'
 									|| unpacked.name === 'fillOrdersUpTo'
 								) {
-									if (obj.maker == myAddr || obj.taker == myAddr) {
+									if ((!contract && (obj.maker == myAddr || obj.taker == myAddr))
+										|| (contract && (to == myAddr || from == myAddr))) {
 
 										if (obj.taker == '') {//from etherscan token event , admin took maker trade
 											if (obj.type == 'Taker Buy') {
@@ -758,7 +789,6 @@
 											} else if (obj.type == 'Taker Sell') {
 												obj.type = 'Maker Buy';
 											}
-
 										}
 										let price = obj.price;
 										if (unpacked.name === 'fillOrdersUpTo') {
@@ -777,10 +807,24 @@
 										}
 										trans = createOutputTransaction(obj.type, obj.token, obj.amount, obj.base, obj.baseAmount, tx.hash, tx.timeStamp, obj.unlisted, price, tx.isError === '0', exchange);
 									}
+								} else if (unpacked.name === 'offer') {
+									let type = obj.type;
+									if (contract && to == myAddr) {
+										if (type === 'Buy offer')
+											type = 'Maker Sell';
+										else if (type === 'Sell offer') {
+											type = 'Maker Buy'
+										}
+										if (exchange == "") {
+											exchange = 'OasisDex ';
+										}
+									}
+									trans = createOutputTransaction(type, obj.token, obj.amount, obj.base, obj.baseAmount, tx.hash, tx.timeStamp, obj.unlisted, obj.price, tx.isError === '0', exchange);
 								}
 
-								if (trans)
-									outputTransactions.push(trans);
+								if (trans && (!outputHashes[trans.Hash] || outputHashes[trans.hash].type !== trans.type)) {
+									outputHashes[trans.Hash] = trans;
+								}
 							}
 						}
 					}
@@ -792,9 +836,10 @@
 
 			function createOutputTransaction(type, token, val, base, total, hash, timeStamp, unlisted, price, status, exchange) {
 
+				if (status === undefined)
+					status = true;
 				if (token) {
-					if (status === undefined)
-						status = true;
+
 					return {
 						Status: status,
 						Exchange: exchange,
@@ -808,13 +853,27 @@
 						Date: _util.toDateTime(timeStamp),
 						Info: window.location.origin + window.location.pathname + '/../tx.html#' + hash,
 					};
+				} else if (exchange === 'OasisDex ') {
+					return {
+						Status: status,
+						Exchange: exchange,
+						Type: type,
+						Token: '',
+						Amount: '',
+						Price: '',
+						Base: '',
+						Total: '',
+						Hash: hash,
+						Date: _util.toDateTime(timeStamp),
+						Info: window.location.origin + window.location.pathname + '/../tx.html#' + hash,
+					};
 				} else {
 					return undefined;
 				}
 			}
 
 			function done() {
-				var txs = Object.values(outputTransactions);
+				var txs = Object.values(outputHashes);
 				lastResult2 = txs;
 				makeTable2(txs);
 			}
@@ -844,7 +903,6 @@
 
 	//transactions table
 	function makeTable2(result) {
-		var result2 = result.filter((x) => { return x.Status && (x.Type === 'Deposit' || x.Type === 'Withdraw') });
 		$('#transactionsTable2 tbody').empty();
 		var loaded = table2Loaded;
 		if (changedDecimals)
@@ -933,15 +991,10 @@
 	function trigger2() {
 		if (table2Loaded) // reload existing table
 		{
-
-
 			$("#transactionsTable2").trigger("update", [true, () => { }]);
 			$("#transactionsTable2 thead th").data("sorter", true);
 			//$("table").trigger("sorton", [[0,0]]);
-
 		} else {
-
-
 			$("#transactionsTable2 thead th").data("sorter", true);
 			$("#transactionsTable2").tablesorter({
 				widgets: ['scroller'],
@@ -952,7 +1005,6 @@
 				},
 				sortList: [[9, 1]]
 			});
-
 			table2Loaded = true;
 		}
 
@@ -996,6 +1048,7 @@
 						row$.append($('<td/>').html(num));
 					}
 					else {
+						cellValue = "";
 						row$.append($('<td/>').html(cellValue));
 					}
 				}
@@ -1020,10 +1073,10 @@
 					else if (cellValue == 'Withdraw' || cellValue == 'Unwrap ETH') {
 						row$.append($('<td/>').html('<span class="label label-danger" >' + cellValue + '</span>'));
 					}
-					else if (cellValue == 'Cancel sell' || cellValue == 'Cancel buy') {
+					else if (cellValue == 'Cancel sell' || cellValue == 'Cancel buy' || cellValue == 'Cancel offer' || cellValue == 'Sell offer' || cellValue == 'Buy offer') {
 						row$.append($('<td/>').html('<span class="label label-default" >' + cellValue + '</span>'));
 					}
-					else if (cellValue == 'Taker Buy' || cellValue == 'Buy up to' || cellValue == 'Maker Buy') {
+					else if (cellValue == 'Taker Buy' || cellValue == 'Buy up to' || cellValue == 'Maker Buy' || cellValue == 'Fill offer') {
 						row$.append($('<td/>').html('<span class="label label-info" >' + cellValue + '</span>'));
 					}
 					else if (cellValue == 'Taker Sell' || cellValue == 'Sell up to' || cellValue == 'Maker Sell') {
