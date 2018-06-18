@@ -1,4 +1,4 @@
-# [DeltaBalances.github.io](https://deltabalances.github.io)
+# [amisolution.github.io/deltabalances](https://amisolution.github.io/deltabalances)
 A community tool to make decentralized exchanges a little easier.
 + View all your token balances in one place (including deposited balances)
 + Look at the details of your transactions with decentralized exchanges.
@@ -8,7 +8,7 @@ DeltaBalances runs fully client side, powered by [Etherscan](https://etherscan.i
 
 ### Exchanges
 DeltaBalances is not affiliated with any of the exchanges mentioned below.
-+ [EtherDelta](https://etherdelta.com) / [ForkDelta](https://forkdelta.github.io)
++ [AmisDEX](https://ami-solution.github.io/amisdex) / [EtherDelta](https://etherdelta.com) / [ForkDelta](https://forkdelta.github.io)
 + [Idex](https://idex.market) (No trade history)
 + [Token store](https://token.store)
 + [Decentrex](https://decentrex.com) (exchange discontinued)
