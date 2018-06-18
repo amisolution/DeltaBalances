@@ -508,6 +508,7 @@
 				gasLimit: Number(tx.gas),
 				status: 'Pending',
 				input: parseInput(tx, tx.input),
+				rawInput: tx.input,
 			}
 
 			if (!pending) {
@@ -547,41 +548,42 @@
 				var outputs = [];
 				var unknownEvents = 0;
 				var unpackedLogs = _util.processLogs(outputLogs);
+				if (unpackedLogs) {
+					for (let i = 0; i < unpackedLogs.length; i++) {
 
-				for (let i = 0; i < unpackedLogs.length; i++) {
+						let unpacked = unpackedLogs[i];
 
-					let unpacked = unpackedLogs[i];
-
-					if (!unpacked) {
-						unknownEvents++;
-						continue;
-					} else {
-
-						let myAddr = tx.from;
-						if (tx.to.toLowerCase() !== unpacked.address.toLowerCase() && unpacked.name !== 'Transfer' && unpacked.name !== 'Approve')
-							myAddr = tx.to.toLowerCase();
-						let obj = _delta.processUnpackedEvent(unpacked, myAddr);
-						if (obj && !obj.error) {
-							if (obj && obj.token && obj.token.name === "???" && obj.token.unknown)
-								unknownToken = true;
-							if (unpacked.name === 'Trade' || unpacked.name == 'Filled' || unpacked.name === 'ExecuteTrade' || unpacked.name == 'LogTake') {
-                                obj.feeToken = obj.feeCurrency;
-								delete obj.feeCurrency;
-								delete obj.transType;
-								delete obj.tradeType;
-							} else if (unpacked.name === 'LogFill') {
-								delete obj.transType;
-								delete obj.tradeType;
-								delete obj.relayer;
-								obj.feeToken = obj.feeCurrency;
-								delete obj.feeCurrency;
-							} else if(unpacked.name === 'LogCancel') {
-                                delete obj.relayer;
-                            }
-							outputs.push(obj);
-						} else {
+						if (!unpacked) {
 							unknownEvents++;
 							continue;
+						} else {
+
+							let myAddr = tx.from;
+							if (tx.to.toLowerCase() !== unpacked.address.toLowerCase() && unpacked.name !== 'Transfer' && unpacked.name !== 'Approve')
+								myAddr = tx.to.toLowerCase();
+							let obj = _delta.processUnpackedEvent(unpacked, myAddr);
+							if (obj && !obj.error) {
+								if (obj && obj.token && obj.token.name === "???" && obj.token.unknown)
+									unknownToken = true;
+								if (unpacked.name === 'Trade' || unpacked.name == 'Filled' || unpacked.name === 'ExecuteTrade' || unpacked.name == 'LogTake' || unpacked.name == 'Conversion' || unpacked.name == 'Order') {
+									obj.feeToken = obj.feeCurrency;
+									delete obj.feeCurrency;
+									delete obj.transType;
+									delete obj.tradeType;
+								} else if (unpacked.name === 'LogFill') {
+									delete obj.transType;
+									delete obj.tradeType;
+									delete obj.relayer;
+									obj.feeToken = obj.feeCurrency;
+									delete obj.feeCurrency;
+								} else if (unpacked.name === 'LogCancel') {
+									delete obj.relayer;
+								}
+								outputs.push(obj);
+							} else {
+								unknownEvents++;
+								continue;
+							}
 						}
 					}
 				}
@@ -600,12 +602,12 @@
 					for (let i = 0; i < obj.length; i++) {
 						if (obj[i] && obj[i].token && obj[i].token.name === "???" && obj[i].token.unknown)
 							unknownToken = true;
-                        if(obj[i].relayer)
-                            delete obj[i].relayer;
-                        if(obj[i].feeCurrency) {
-                            obj[i].feeToken = obj[i].feeCurrency;
+						if (obj[i].relayer)
+							delete obj[i].relayer;
+						if (obj[i].feeCurrency) {
+							obj[i].feeToken = obj[i].feeCurrency;
 							delete obj[i].feeCurrency;
-                        }
+						}
 					}
 				}
 				return obj;
@@ -670,10 +672,10 @@
 				sum += 'Status: transaction failed, you might not have had the right account balance left. Otherwise check if the token is not locked. (Still in ICO, rewards period, disabled etc.)<br><br>';
 			} else if (transaction.input[0].type === 'Deposit' || transaction.input[0].type === 'Withdraw') {
 				sum += 'Status: transaction failed, you might not have had the right account balance left.<br>';
-			} 
-            else {
-                sum += 'Status: transaction failed.';
-            }
+			}
+			else {
+				sum += 'Status: transaction failed.<br>';
+			}
 		} else if (transaction.status === 'Failed') {
 			sum += 'Status: Exchange operation failed.<br>';
 		} else {
@@ -696,11 +698,22 @@
 					}
 				}
 			}
-            if(transaction.input[0].type.indexOf('aker') !== -1 && transaction.input[0].exchange == _delta.addressName(_delta.config.contractIdexAddr)) {
-                sum += '<br>Note: IDEX uses no transaction output events.';
-            }
-            
-		} else if (transaction.output && transaction.output.length > 0) {
+			if (transaction.input[0].type.indexOf('aker') !== -1 && transaction.input[0].exchange == _delta.addressName(_delta.config.contractIdexAddr)) {
+				sum += '<br>Note: IDEX uses no transaction output events.';
+			}
+
+		} else if (!transaction.input && (!transaction.output || transaction.output.length == 0) && transaction.rawInput == '0x') {
+			//regular ETH transfer, no funciton calls
+			let operation = 'Operation: Transferred ' + transaction.value.toString() + ' ETH from ' + _util.addressLink(transaction.from, true, true) + ' to ' + _util.addressLink(transaction.to, true, true) + '<br>';
+			sum += operation;
+		}
+		else if (transaction.output && transaction.output.length > 0) {
+
+			if (transaction.rawInput == '0x') {
+				let operation = 'Operation: Transferred ' + transaction.value.toString() + ' ETH from ' + _util.addressLink(transaction.from, true, true) + ' to ' + _util.addressLink(transaction.to, true, true) + '<br>';
+				sum += operation;
+			}
+
 			for (let i = 0; i < transaction.output.length; i++) {
 				if (transaction.output[i].note) {
 					let operation = 'Operation: ' + transaction.output[i].note + '<br>';
@@ -724,8 +737,8 @@
 				sum += '<strong>Warning</strong>, you sent tokens to the Exchange contract without a deposit. Nobody can access these tokens anymore, they are most likely lost forever. <br>';
 			}
 		}
-		if (!transaction.input && (!transaction.output || transaction.output.length == 0)) {
-			sum += 'This does not seem to be an exchange (EtherDelta, 0x, Decentrex, Token.store, Idex) transaction <br>';
+		else if (!transaction.input && transaction.rawInput !== '0x' && (!transaction.output || transaction.output.length == 0)) {
+			sum += 'This does not seem to be a transaction with a supported decentralized exchange. <br>';
 		}
 		if (checkOldED(transaction.to)) {
 			sum += 'This transaction is to an outdated EtherDelta contract, only use these to withdraw old funds.<br>';
@@ -736,8 +749,6 @@
 		var tradeCount = 0;
 		var zeroDecWarning = '';
 		if (transaction.output) {
-			// TODO fix this etherdelta only?
-			// output price can get wrong decimals if trading like 15e-10, so get price from input if possible. 
 			if (transaction.input && transaction.output.length == 1 && transaction.output.price) {
 				//transaction.output[0].price = transaction.input[0].price;
 				if (transaction.input[0]['order size'].greaterThan(transaction.output[0].amount)) {
@@ -749,21 +760,21 @@
 			//var received = _delta.web3.toBigNumber(0);
 
 			for (var i = 0; i < transaction.output.length; i++) {
-				if (transaction.output[i].type == 'Taker Buy') {
+				if (transaction.output[i].type == 'Taker Buy' || transaction.output[i].type == 'Taker Sell') {
 					if (transaction.output[i].token.decimals == 0 && !zeroDecWarning) {
 						zeroDecWarning = "<strong>Note: </strong> " + transaction.output[i].token.name + " has 0 decimals precision. Numbers might be lower than expected due to rounding. <br>";
 					}
 					tradeCount++;
-					sum += "Bought " + transaction.output[i].amount + " " + transaction.output[i].token.name + " for " + transaction.output[i].price + " " + transaction.output[i].base.name + " each, " + transaction.output[i].baseAmount + " " + transaction.output[i].base.name + " in total. <br>";
-					//spent = transaction.output[i].ETH.plus(spent);
-				}
-				else if (transaction.output[i].type == 'Taker Sell') {
-					if (transaction.output[i].token.decimals == 0 && !zeroDecWarning) {
-						zeroDecWarning = "<strong>Note: </strong> " + transaction.output[i].token.name + " has 0 decimals precision. Numbers might be lower than expected due to rounding. <br>"
+					let typeWord = "Bought ";
+					if (transaction.output[i].type == 'Taker Sell') {
+						typeWord = "Sold ";
 					}
-					tradeCount++;
-					sum += "Sold " + transaction.output[i].amount + " " + transaction.output[i].token.name + " for " + transaction.output[i].price + " " + transaction.output[i].base.name + " each, " + transaction.output[i].baseAmount + " " + transaction.output[i].base.name + " in total. <br>";
-					//	received = transaction.output[i].ETH.plus(received);
+
+					// add description bought/sold  if not internal enclaves order
+					if (transaction.output[i].buyer !== _delta.config.contractEnclavesAddr && transaction.output[i].seller !== _delta.config.contractEnclavesAddr) {
+						sum += typeWord + transaction.output[i].amount + " " + transaction.output[i].token.name + " for " + transaction.output[i].price + " " + transaction.output[i].base.name + " each, " + transaction.output[i].baseAmount + " " + transaction.output[i].base.name + " in total. <br>";
+					}
+					//spent = transaction.output[i].ETH.plus(spent);
 				}
 				else if (transaction.output[i].type == "Deposit" || transaction.output[i].type == "Token Deposit") {
 					sum += "Deposited " + transaction.output[i].amount + " " + transaction.output[i].token.name + ", new exchange balance: " + transaction.output[i].balance + " " + transaction.output[i].token.name + '<br>';
@@ -894,6 +905,8 @@
 			else if (uniqueType.indexOf('cancel') !== -1) {
 				uniqueType = 'cancel';
 				wideOutput = true;
+			} else if (uniqueType === 'deposit' || uniqueType === 'token deposit' || uniqueType === 'withdraw' || uniqueType === 'token withdraw') {
+				uniqueType = 'depositWithdraw';
 			}
 			else if (uniqueType.indexOf(' up to') !== -1 || uniqueType.indexOf('offer') !== -1) {
 				wideOutput = true;
@@ -920,12 +933,10 @@
 
 
 		$("table").tablesorter({
-			headers: { 0: { sorter: false }, 1: { sorter: false }, 2: { sorter: false }, 3: { sorter: false }, 4: { sorter: false }, 5: { sorter: false }, 6: { sorter: false }, 7: { sorter: false } },
 			widgets: ['scroller'],
 			widgetOptions: {
 				scroller_barWidth: 18,
 			},
-			sortList: [[0, 0]]
 		});
 		$("table thead th").data("sorter", false);
 
@@ -982,22 +993,20 @@
 				if (columns[keys[i]]) {
 
 					var cellValue = myList[i];
-					if (keys[i] == 'token' || keys[i] == 'base' || keys[i] == 'feeToken' || keys[i] == 'FeeToken ' || keys[i] == 'FeeToken'  || keys[i] == 'token In' || keys[i] == 'token Out') {
+					if (keys[i] == 'token' || keys[i] == 'base' || keys[i] == 'feeToken' || keys[i] == 'FeeToken ' || keys[i] == 'FeeToken' || keys[i] == 'token In' || keys[i] == 'token Out') {
 
 						let token = cellValue;
-                        if(token) {
-                            let popoverContents = _delta.makePopoverContents(token);
-                            let labelClass = 'label-warning';
-                            if (!token.unlisted && !token.unknown)
-                                labelClass = 'label-primary';
-
-                            cellValue = '<a tabindex="0" class="label ' + labelClass + '" role="button" data-html="true" data-toggle="popover" data-placement="auto right"  title="' + token.name + '" data-container="body" data-content=\'' + popoverContents + '\'>' + token.name + '</a>';
-                        }
-                    }
-					else if (keys[i] == 'price' || keys[i] == 'minPrice' || keys[i] == 'maxPrice') {
+						if (token) {
+							let popover = _delta.makeTokenPopover(token);
+							cellValue = popover;
+						} else {
+							cellValue = "";
+						}
+					}
+					else if (keys[i] == 'price' || keys[i] == 'minPrice' || keys[i] == 'maxPrice' || keys[i] == 'fee' || keys[i] == 'takerFee' || keys[i] == 'makerFee') {
 						cellValue = '<span data-toggle="tooltip" title="' + cellValue.toString() + '">' + cellValue.toFixed(5) + '</span>';
 					}
-					else if (keys[i] == 'order size' || keys[i] == 'amount' || keys[i] == 'estAmount' || keys[i] == 'baseAmount' || keys[i] == 'estBaseAmount' || keys[i] == 'fee' || keys[i] == 'takerFee' || keys[i] == 'makerFee' || keys[i] == 'balance') {
+					else if (keys[i] == 'order size' || keys[i] == 'amount' || keys[i] == 'estAmount' || keys[i] == 'baseAmount' || keys[i] == 'estBaseAmount' || keys[i] == 'balance') {
 						cellValue = '<span data-toggle="tooltip" title="' + cellValue.toString() + '">' + cellValue.toFixed(3) + '</span>';
 					}
 					else if (keys[i] == 'seller' || keys[i] == 'buyer' || keys[i] == 'to' || keys[i] == 'sender' || keys[i] == 'from' || keys[i] == 'maker' || keys[i] == 'taker' || keys[i] == 'wallet') {

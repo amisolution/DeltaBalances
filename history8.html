@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="description" content="View and export Kyber Network trade history.">
+  <meta name="description" content="View and export EnclavesDex trade history.">
   <meta content="width=device-width, initial-scale=1" name="viewport">
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png?1">
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png?1">
@@ -32,7 +32,7 @@
   <script src="configBundle.js"></script>
   <script src="bundle.min.js"></script>
   <script> 
-    var historyConfig = bundle.DeltaBalances.config.historyKyber;
+    var historyConfig = bundle.DeltaBalances.config.historyEnclaves;
   </script>
   <script src="history.js"></script>
 
@@ -196,7 +196,7 @@
                 <span>AirSwap</span>
               </a>
             </li>
-            <li class="active">
+            <li>
               <a id="historyNav6" href="history6.html">
                 <i class="sidebar-icon icon-kyber"></i>
                 <span>Kyber Network</span>
@@ -208,7 +208,7 @@
                 <span>OasisDex</span>
               </a>
             </li>
-            <li>
+            <li class="active">
               <a id="historyNav8" href="history8.html">
                 <i class="sidebar-icon icon-enclaves"></i>
                 <span>EnclavesDex</span>
@@ -275,7 +275,7 @@
               <div class="box-body noPadTop">
                 <div class="col-md-9 noPadM" style="overflow:hidden;">
                   <h2>
-                    <i class="icon-kyber"></i> Kyber Network History</h2>
+                    <!-- <i class="icon-"></i> -->Enclaves Dex History</h2>
                   <div style="white-space:nowrap; overflow:hidden;">
                     <div id="addrIcon" class="hidden-xs" style="float:left; display: inline-block; padding-left: 1%;"></div>
                     <div class="hidden-xs" style="padding-left: 3%; float:left;">
@@ -289,12 +289,12 @@
                 </div>
                 <div class="col-md-12 noPadM">
                   <div class="col-md-5 noPad" style="overflow:hidden;">
-                    <h4 class="hidden">Operation types</h4>
+                    <h4>Operation types</h4>
 
-                    <select style="display:inline; width:80%; " class="hidden form-control" id="typeSelect" onChange="changeTypes()">
+                    <select style="display:inline; width:80%; " class="form-control" id="typeSelect" onChange="changeTypes()">
                       <option value="0">Trades</option>
-                      <!-- <option value="1">Funds (Deposit/Withdraw)</option>
-                      <option value="2">Trades + Funds</option> -->
+                      <option value="1">Funds (Deposit/Withdraw)</option>
+                      <option value="2">Trades + Funds</option>
                     </select>
                     <h4>Date range: </h4>
                     <span id="selectedBlocks">Selected block range:</span>
@@ -343,8 +343,8 @@
                   <div class="col-md-7 noPad" style="overflow:hidden;">
                     <h4>Info</h4>
                     History for
-                    <a href="https://kyber.network/" target="_blank">Kyber Network</a> at contract
-                    <a href="https://etherscan.io/address/0x964f35fae36d75b1e72770e244f6595b68508cf5" target="_blank">0x964f3..</a>.
+                    <a href="https://enclaves.io" target="_blank">Enclaves</a> at contract
+                    <a href="https://etherscan.io/address/0xbf45f4280cfbe7c2d2515a7d984b8c71c15e82b7" target="_blank">0xbf45f..</a>.
                     <br>
                     <br>
 
@@ -358,8 +358,8 @@
                     <br>
                     <br> History is limited to trades with base ETH or DAI, starting at block
                     <span id="minBlockLink"></span>
-                    <br> Kyber has no trade fees.
-
+                    <br> Enclaves has a 0% maker fee and 0.2% - 0.3% taker fee.
+                    <br>
                   </div>
                   <div class="col-md-12 noPad">
                     <br>
@@ -378,7 +378,7 @@
                       <option value="4">Cointracking.info (CustomExchange)</option>
                     </select>
                   </div>
-                  <div id="exportFunds" class="hidden col-md-6 noPad" style="overflow:hidden;">
+                  <div id="exportFunds" class="col-md-6 noPad" style="overflow:hidden;">
                     <h4>Export funds (deposit/withdraw):
                       <span id="downloadFundsBtn">
                         <i class="fa dim fa-download" aria-hidden="true"></i>

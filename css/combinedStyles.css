@@ -563,18 +563,32 @@ table.tablesorter th.tablesorter-headerUnSorted {
     }
 }
 
-
 @media (max-width: 767px) {
     .customWidth1
     {
         width:50%;
     }
+    
+    .s-fullwidth {
+        padding:0;
+    }
+    
+    .noPadM {
+        padding:0;
+    }
 }
 
 
-.tiny
-{
+.tiny {
     display:none;
+}
+
+.noPad {
+    padding:0;
+}
+
+.noPadTop {
+    padding-top:0;
 }
 
 @media (max-width: 500px) {
@@ -637,6 +651,23 @@ input[type=number] {
 	overflow:hidden;
 	padding:0;
 	font-weight: normal;
+    
+    height: 30px;
+    line-height: 30px;
+    cursor: pointer;
+    margin-bottom:5px;
+}
+
+.exchange-box:hover {
+    color:yellow;
+}
+
+label.exchange-box div.box-header label {
+    cursor:pointer;
+}
+
+.bottom10M {
+    margin-bottom:10px;
 }
 
 .tablesorter .filtered {
@@ -707,13 +738,14 @@ input[type=number] {
   display: inline-block;
   text-align:left;
 }
- 
+
 .icon-etherdelta:before { content: '\e800'; } /* '' */
 .icon-airswap:before { content: '\e801'; } /* '' */
 .icon-tokenstore:before { content: '\e802'; } /* '' */
 .icon-zrx:before { content: '\e803'; } /* '' */
 .icon-info:before { content: '\e804'; } /* '' */
 .icon-link:before { content: '\e805'; } /* '' */
+.icon-enclaves:before { content: '\e805'; } /* '' */
 .icon-oasis:before { content: '\e806'; } /* '' */
 .icon-kyber:before { content: '\e807'; } /* '' */
 .icon-github:before { content: '\f09b'; } /* '' */
@@ -723,10 +755,45 @@ input[type=number] {
 .icon-box:before { content: '\f187'; } /* '' */
 .icon-book:before { content: '\e808'; } /* '' */
 
+.icon-ethen {
+  padding-left:5px;
+}
+
 .tooltip-inner {
   max-width: 500px;
 }
 
+.text70 {
+    font-size:70%;
+}
+
 .text75 {
-    font-size:75%;
+  font-size:75%;
+}
+
+.btn-multi.active {
+    border-bottom: none;
+    background-color: #FFFFFF;
+    color: #444;
+    border-color: #ddd;
+    font-weight:600;
+}
+
+.btn-multi:active {
+    border-bottom: none;
+    background-color: #FFFFFF;
+    color: #444;
+    border-color: #ddd;
+    font-weight:600;
+}
+
+.btn-multi {
+    border-bottom: none;
+    background-color: #FFFFFF;
+    color: #555;
+    border-color: #FFFFFF;
+}
+
+.btn-multi:hover {
+     font-weight:600;
 }

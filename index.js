@@ -40,16 +40,35 @@
 				displayed: 0,
 				contract: _delta.config.contractTokenStoreAddr
 			},
+			'Enclaves': {
+				enabled: false,
+				loaded: 0,
+				displayed: 0,
+				contract: _delta.config.contractEnclavesAddr
+			},
 			'Decentrex': {
 				enabled: false,
 				loaded: 0,
 				displayed: 0,
 				contract: _delta.config.contractDecentrexAddr
 			},
+			'Ethen': {
+				enabled: false,
+				loaded: 0,
+				displayed: 0,
+				contract: _delta.config.contractEthenAddr
+			},
+			'DEXY': {
+				enabled: false,
+				loaded: 0,
+				displayed: 0,
+				contract: _delta.config.contractDexyAddr
+			},
 		};
 
 
 	var loadedBid = 0;
+	var failedBid = 0;
 
 	var loadedCustom = false;
 	var trigger_1 = false;
@@ -62,7 +81,7 @@
 	var useAsk = false;
 
 	var showCustomTokens = false;
-	var showDollars = true;
+	var showFiat = 'USD';
 
 
 	// user input & data
@@ -80,7 +99,8 @@
 	var walletWarningBalance = 0.003;
 
 	var balances = {};
-	var etherPrice = 0;
+	var etherPriceUSD = 0;
+	var etherPriceEUR = 0;
 
 	// placeholder
 	var balancesPlaceholder = {
@@ -91,13 +111,18 @@
 				EtherDelta: 0,
 				IDEX: 0,
 				'Token store': 0,
+				Enclaves: 0,
 				Decentrex: 0,
+				Ethen: 0,
+				DEXY: 0,
 				Total: 0,
 				Unlisted: false,
 				Address: '0x0000000000000000000000000000000000000000',
 				Bid: '',
 				Ask: '',
 				'Est. ETH': '',
+				'USD': '',
+				'EUR': '',
 			},
 	};
 
@@ -133,7 +158,7 @@
 		$('#zero').prop('checked', hideZero);
 		$('#decimals').prop('checked', decimals);
 		$('#custom').prop('checked', showCustomTokens);
-		$('#dollars').prop('checked', showDollars);
+		$('#fiatSelect').val(Number(showFiat));
 
 
 		$('body').on('expanded.pushMenu collapsed.pushMenu', function () {
@@ -341,8 +366,9 @@
 		setStorage();
 	}
 
-	function checkAsk() {
-		useAsk = $('#ask').prop('checked');
+	function selectPrice() {
+		let val = $('#priceSelect').val();
+		useAsk = Number(val) > 0;
 
 		$("#resultTable").trigger("destroy");
 		$('#resultTable tbody').html('');
@@ -351,19 +377,27 @@
 
 		if (lastResult) {
 			finishedBalanceRequest();
-			//makeTable(lastResult, hideZero);
 		} else {
 			placeholderTable();
 		}
+
+		setStorage();
 	}
 
-	function checkDollars() {
-		showDollars = $('#dollars').prop('checked');
+	function selectFiat() {
+		let val = $('#fiatSelect').val();
+		showFiat = Number(val);
 
 		clearOverviewHtml(true);
+		$("#resultTable").trigger("destroy");
+		$('#resultTable tbody').html('');
+		$('#resultTable thead').html('');
+		table1Loaded = false;
 
-		if (showDollars && lastResult) {
+		if (lastResult) {
 			finishedBalanceRequest();
+		} else {
+			placeholderTable();
 		}
 		setStorage();
 	}
@@ -395,7 +429,7 @@
 		showCustomTokens = $('#custom').prop('checked');
 		$('#customMessage').prop('hidden', showCustomTokens);
 		setStorage();
-		let maxcount = Object.keys(_delta.uniqueTokens).length;
+		let maxcount = _delta.config.customTokens.length;
 		if (showCustomTokens) {
 			tokenCount = maxcount;
 			if (lastResult && loadedCustom) {
@@ -418,7 +452,7 @@
 	}
 
 	function showTokenCount() {
-		let maxcount = Object.keys(_delta.uniqueTokens).length;
+		let maxcount = _delta.config.customTokens.length;
 		let currentcount = maxcount;
 		if (showCustomTokens) {
 			currentcount = maxcount;
@@ -604,13 +638,15 @@
 		//disableInput(true);
 
 		loadedBid = 0;
+		failedBid = 0;
 
 		loadedCustom = false;
 		$('#resultTable tbody').empty();
 		showLoading(true, false);
 
-		var allCount = Object.keys(_delta.uniqueTokens).length;
-		var allTokens = Object.values(_delta.uniqueTokens);
+
+		var allTokens = _delta.config.customTokens;
+		var allCount = allTokens.length;
 		if (!showCustomTokens) {
 			tokenCount = _delta.config.tokens.length;
 		} else {
@@ -649,7 +685,10 @@
 				EtherDelta: '',
 				IDEX: 0,
 				'Token store': 0,
+				Enclaves: 0,
 				Decentrex: 0,
+				Ethen: 0,
+				DEXY: 0,
 				Total: 0,
 				Bid: '',
 				Ask: '',
@@ -662,10 +701,11 @@
 	}
 
 	function getEtherPrice() {
-		$.getJSON('https://api.coinmarketcap.com/v1/ticker/ethereum/', result => {
+		$.getJSON('https://api.coinmarketcap.com/v2/ticker/1027/?convert=EUR', result => {
 
-			if (result && result[0].price_usd) {
-				etherPrice = result[0].price_usd;
+			if (result && result.data.quotes) {
+				etherPriceUSD = result.data.quotes.USD.price;
+				etherPriceEUR = result.data.quotes.EUR.price;
 			}
 		});
 
@@ -802,78 +842,86 @@
 
 	function getPrices(rqid) {
 		var socketRetries = 0;
-		var urlRetries = 4; // disabled
+		const numRetries = 2;
+		var url1Retries = 0;
 		var pricesLoaded = false;
-		var numRetries = 4;
-
-		/*disable price request due to ED server issues */
-		/*	{ 
-				loadedBid = -1;
-				finishedBalanceRequest();
-				urlRetries = numRetries; //disable url request for now;
-		}*/
 
 		retrySocket();
-		//retryURL();
+		retryURL1();
 
-
+		//prices from forkdelta socket
 		function retrySocket() {
 			_delta.socketTicker((err, result, rid) => {
 				if (requestID <= rqid) {
 					if (!err && result) {
-						parsePrices(result);
-					} else if (loadedBid < 1 && socketRetries < numRetries) {
+						parsePrices(result, 'FD');
+					} else if (loadedBid < 2 && socketRetries < numRetries) {
 						socketRetries++;
 						retrySocket();
-					} else if (socketRetries >= numRetries && urlRetries >= numRetries) {
-						showError("Failed to retrieve EtherDelta Prices after 5 tries. Try again (later)");
-						loadedBid = -1;
+					} else if (socketRetries >= numRetries) {
+						showError("Failed to retrieve ForkDelta Prices after 3 tries. Prices may be less accurate.");
+						loadedBid++;
+						failedBid++;
 						finishedBalanceRequest();
 					}
 				}
 			}, rqid);
 		}
 
-		function retryURL() {
+		//prices from etherdelta https endpoint (includes more unlisted tokens)
+		function retryURL1() {
 			$.getJSON(_delta.config.apiServer + '/returnTicker').done((result) => {
 				if (requestID <= rqid) {
 					if (result) {
-						parsePrices(result);
-					} else if (loadedBid < 1 && urlRetries < numRetries) {
-						urlRetries++;
-						retryURL();
-					} else if (socketRetries >= numRetries && urlRetries >= numRetries) {
-						showError("Failed to retrieve EtherDelta Prices after 5 tries. Try again (later)");
-						loadedBid = -1;
+						parsePrices(result, 'ED');
+					} else if (loadedBid < 2 && url1Retries < numRetries) {
+						url1Retries++;
+						retryURL1();
+					} else if (url1Retries >= numRetries) {
+						showError("Failed to retrieve EtherDelta Prices after 3 tries. Prices may be less accurate.");
+						loadedBid++;
 						finishedBalanceRequest();
 					}
 				}
 			}).fail((result) => {
 				if (requestID <= rqid) {
-					if (loadedBid < 1 && urlRetries < numRetries) {
-						urlRetries++;
-						retryURL();
+					if (loadedBid < 2 && url1Retries < numRetries) {
+						url1Retries++;
+						retryURL1();
 					}
-					else if (socketRetries >= numRetries && urlRetries >= numRetries) {
-						showError("Failed to retrieve EtherDelta Prices after 5 tries. Try again (later)");
-						loadedBid = -1;
+					else if (url1Retries >= numRetries) {
+						showError("Failed to retrieve EtherDelta Prices after 3 tries. Try again (later)");
+						loadedBid++;
+						failedBid++;
 						finishedBalanceRequest();
 					}
 				}
 			});
 		}
 
-		function parsePrices(result) {
+		function parsePrices(result, source) {
 			var results = Object.values(result);
 			for (var i = 0; i < results.length; i++) {
-				var token = _delta.uniqueTokens[results[i].tokenAddr];
 
-				if (token && balances[token.addr]) {
-					balances[token.addr].Bid = Number(results[i].bid);
-					balances[token.addr].Ask = Number(results[i].ask);
+				if (source == 'ED' || source == 'FD') {
+					var token = _delta.uniqueTokens[results[i].tokenAddr];
+					if (token && balances[token.addr]) {
+						balances[token.addr][source + 'Bid'] = Number(results[i].bid);
+						balances[token.addr][source + 'Ask'] = Number(results[i].ask);
+					}
+				} else if (source == 'BIN') {
+
+					let priceAddr = _delta.binanceMap[results[i].symbol];
+					if (priceAddr) {
+						var token = _delta.uniqueTokens[priceAddr];
+						if (token && balances[token.addr]) {
+							balances[token.addr][source + 'Bid'] = Number(results[i].bidPrice);
+							balances[token.addr][source + 'Ask'] = Number(results[i].askPrice);
+						}
+					}
 				}
 			}
-			loadedBid = 1;
+			loadedBid++;
 			finishedBalanceRequest();
 			return;
 		}
@@ -887,11 +935,11 @@
 	function getAllBalances(rqid, mode, addCustom) {
 
 		// select which tokens to be requested
-		var tokens2 = Object.keys(_delta.uniqueTokens);
+		var tokens2 = _delta.config.customTokens.map((x) => { return x.addr; });
 		if (addCustom && showCustomTokens) {
-			tokens2 = tokens2.filter((x) => { return _delta.uniqueTokens[x].unlisted });
+			tokens2 = tokens2.filter((x) => { return _delta.uniqueTokens[x].unlisted; });
 		} else if (!showCustomTokens) {
-			tokens2 = tokens2.filter((x) => { return !_delta.uniqueTokens[x].unlisted });
+			tokens2 = tokens2.filter((x) => { return !_delta.uniqueTokens[x].unlisted; });
 		}
 
 		//split in separate requests to match maxPerRequest
@@ -1050,14 +1098,21 @@
 
 		//prices
 		{
-			progressString += '<span>Token prices:';
-			if (loadedBid == 0) {
-				progressString += '<span style="padding-left:3px;padding-right:30px" class="text-red"> No </span></span>';
-			} else if (loadedBid == 1) {
-				progressString += '<span style="padding-left:3px;padding-right:30px" class="text-green"> Yes </span></span>';
+			progressString += '<span>Token prices:<span style="padding-left:3px;padding-right:30px" class="text-';
+			if (loadedBid < 2) {
+				if (running) {
+					progressString += 'red"> Loading..';
+				} else {
+					progressString += 'green"> No';
+				}
+			} else if (failedBid == 0) {
+				progressString += 'green"> Yes';
+			} else if (failedBid == 1) {
+				progressString += 'green"> 1/2 Failed';
 			} else {
-				progressString += '<span style="padding-left:3px;padding-right:30px" class="text-red"> Failed </span></span>';
+				progressString += 'red"> Failed';
 			}
+			progressString += '</span></span>';
 		}
 
 		$('#balanceProgress').html(progressString);
@@ -1095,10 +1150,10 @@
 			exchanges[keys[i]].displayed = exchanges[keys[i]].loaded >= tokenCount || exchanges[keys[i]].loaded == -1;
 		}
 
-		displayedBid = loadedBid >= 1 || loadedBid <= -1;
+		displayedBid = loadedBid >= 2;
 
-		var allCount = Object.keys(_delta.uniqueTokens).length;
-		var allTokens = Object.values(_delta.uniqueTokens);
+		var allTokens = _delta.config.customTokens;
+		var allCount = allTokens.length;
 
 		// get totals
 		for (var i = 0; i < allCount; i++) {
@@ -1115,6 +1170,8 @@
 				}
 
 				bal['Est. ETH'] = '';
+				bal['USD'] = '';
+				bal['EUR'] = '';
 
 				// ETH and  wrapped eth fixed at value of 1 ETH
 				if (_util.isWrappedETH(token.addr)) {
@@ -1130,13 +1187,36 @@
 						sumToken = sumToken.plus(bal.Total);
 					}
 				}
-				else if ((bal.Bid || (useAsk && bal.Ask)) && bal.Total) {
+				else if ((bal.EDBid || bal.EDAsk || bal.FDBid || bal.FDAsk) && bal.Total) {
+
+					//case cade price sources in volume, Binance most accurate price
+					if (bal.EDBid)
+						bal.Bid = bal.EDBid;
+					if (bal.FDBid && (!bal.EDBid || bal.FDBid > bal.EDBid))
+						bal.Bid = bal.FDBid;
+					if (bal.BINBid)
+						bal.Bid = bal.BINBid;
+
+					if (bal.EDAsk)
+						bal.Ask = bal.EDAsk;
+					if (bal.FDAsk && (!bal.EDAsk || bal.FDAsk < bal.EDAsk))
+						bal.Ask = bal.FDAsk;
+					if (bal.BINAsk)
+						bal.Ask = bal.BINAsk;
+
 					// calculate estimate if not (wrapped) ETH
-					var val;
-					if (!useAsk)
-						val = bal.Total.times(bal.Bid);
-					else
-						val = bal.Total.times(bal.Ask);
+					var val = _delta.web3.toBigNumber(0);
+
+					if (useAsk) {
+						if (bal.Ask) {
+							val = bal.Total.times(bal.Ask);
+						}
+					} else {
+						if (bal.Bid) {
+							val = bal.Total.times(bal.Bid);
+						}
+					}
+
 					bal['Est. ETH'] = val;
 					sumToken = sumToken.plus(val);
 				}
@@ -1157,6 +1237,17 @@
 
 		if (allDone) {
 
+			for (let i = 0; i < result.length; i++) {
+				if (result[i]['Est. ETH'] !== '') {
+					if (showFiat == 1) {
+						result[i]['USD'] = '$' + _util.commaNotation(result[i]['Est. ETH'].times(etherPriceUSD).toFixed(2));
+					} else if (showFiat == 2) {
+						result[i]['EUR'] = '€' + _util.commaNotation(result[i]['Est. ETH'].times(etherPriceEUR).toFixed(2));
+					}
+				}
+			}
+			lastResult = result;
+
 			$('#ethbalance').html('<span data-toggle="tooltip" title="' + sumETH.toString() + '">' + sumETH.toFixed(fixedDecimals) + ' ETH</span>');
 			$('#wethbalance').html('<span data-toggle="tooltip" title="' + sumWETH.toString() + '">' + sumWETH.toFixed(fixedDecimals) + ' ETH</span>');
 			$('#tokenbalance').html('<span data-toggle="tooltip" title="' + sumToken.toString() + '">' + sumToken.toFixed(fixedDecimals) + ' ETH</span>');
@@ -1168,11 +1259,16 @@
 				'container': 'body'
 			});
 
-			if (showDollars) {
-				$('#ethbalancePrice').html(" $" + _util.commaNotation((sumETH.times(etherPrice)).toFixed(2)));
-				$('#wethbalancePrice').html(" $" + _util.commaNotation((sumWETH.times(etherPrice)).toFixed(2)));
-				$('#tokenbalancePrice').html(" $" + _util.commaNotation((sumToken.times(etherPrice)).toFixed(2)));
-				$('#totalbalancePrice').html(" $" + _util.commaNotation((totalSumETH.times(etherPrice)).toFixed(2)));
+			if (showFiat == 1) {
+				$('#ethbalancePrice').html(" $" + _util.commaNotation((sumETH.times(etherPriceUSD)).toFixed(2)));
+				$('#wethbalancePrice').html(" $" + _util.commaNotation((sumWETH.times(etherPriceUSD)).toFixed(2)));
+				$('#tokenbalancePrice').html(" $" + _util.commaNotation((sumToken.times(etherPriceUSD)).toFixed(2)));
+				$('#totalbalancePrice').html(" $" + _util.commaNotation((totalSumETH.times(etherPriceUSD)).toFixed(2)));
+			} else if (showFiat == 2) {
+				$('#ethbalancePrice').html(" €" + _util.commaNotation((sumETH.times(etherPriceEUR)).toFixed(2)));
+				$('#wethbalancePrice').html(" €" + _util.commaNotation((sumWETH.times(etherPriceEUR)).toFixed(2)));
+				$('#tokenbalancePrice').html(" €" + _util.commaNotation((sumToken.times(etherPriceEUR)).toFixed(2)));
+				$('#totalbalancePrice').html(" €" + _util.commaNotation((totalSumETH.times(etherPriceEUR)).toFixed(2)));
 			}
 
 
@@ -1184,11 +1280,6 @@
 			clearOverviewHtml(false);
 			$('#downloadBalances').html('');
 		}
-
-
-		/*if (showCustomTokens)
-			lastResult3 = result;
-			*/
 
 		makeTable(result, hideZero); //calls trigger
 	}
@@ -1219,6 +1310,14 @@
 
 		balanceHeaders['Ask'] = useAsk;
 		balanceHeaders['Bid'] = !useAsk;
+
+		balanceHeaders['USD'] = showFiat == 1;
+		balanceHeaders['EUR'] = showFiat == 2;
+
+		//count number off active exchanges
+		let numColumns = Object.values(exchanges).reduce((sum, ex) => { if (ex.enabled) return sum + 1; else return sum; }, 0);
+		balanceHeaders['Total'] = numColumns > 1;
+
 		buildHtmlTable('#resultTable', filtered, loaded, balanceHeaders);
 
 		trigger();
@@ -1250,7 +1349,7 @@
 			localStorage.setItem("customTokens", showCustomTokens);
 			localStorage.setItem("decimals", decimals);
 			localStorage.setItem("hideZero", hideZero);
-			localStorage.setItem('usd', showDollars);
+			localStorage.setItem('fiat', showFiat);
 
 			Object.keys(exchanges).forEach(function (key) {
 				localStorage.setItem(key, exchanges[key].enabled);
@@ -1261,12 +1360,12 @@
 	function getStorage() {
 		if (typeof (Storage) !== "undefined") {
 
-			if (localStorage.getItem("usd") === null) {
-				showDollars = true;
+			if (localStorage.getItem("fiat") === null) {
+				showFiat = '1';
 			} else {
-				showDollars = localStorage.getItem('usd');
-				if (showDollars === "false")
-					showDollars = false;
+				showFiat = localStorage.getItem('fiat');
+				if (!(showFiat == '1' || showFiat == '2'))
+					showFiat = '0';
 			}
 
 			if (localStorage.getItem("customTokens") === null) {
@@ -1335,13 +1434,24 @@
 
 	// final callback to sort table
 	function trigger() {
+
+		let keys = Object.keys(exchanges);
+		let totalIndex = 4;
+		for (let i = 0; i < keys.length; i++) {
+			if (!exchanges[keys[i]].enabled) {
+				totalIndex++;
+			}
+		}
+
 		if (table1Loaded) // reload existing table
 		{
 			$("#resultTable").trigger("update", [true, () => { }]);
 			$("#resultTable thead th").data("sorter", true);
-			//$("table").trigger("sorton", [[0,0]]);
+			//$("#resultTable").trigger("sorton", [[totalIndex, 1]]);
 
 		} else {
+
+
 			$("#resultTable thead th").data("sorter", true);
 			$("#resultTable").tablesorter({
 				widgets: ['scroller', 'filter'],
@@ -1358,7 +1468,6 @@
 			table1Loaded = true;
 		}
 
-		let keys = Object.keys(exchanges);
 		var allDisplayed = true;
 		for (let i = 0; i < keys.length; i++) {
 			if (!exchanges[keys[i]].displayed) {
@@ -1386,7 +1495,10 @@
 		var body = $(selector + ' tbody');
 		var columns = addAllColumnHeaders(myList, selector, loaded, headers);
 
+		var tbody$ = $('<tbody/>');
+
 		for (var i = 0; i < myList.length; i++) {
+
 			if (!showCustomTokens && myList[i].Unlisted)
 				continue;
 			var row$ = $('<tr/>');
@@ -1397,7 +1509,7 @@
 				if (cellValue == null) cellValue = "";
 				var head = columns[colIndex];
 
-				if (head == 'Total' || head == 'EtherDelta' || head == 'Decentrex' || head == 'Token store' || head == 'IDEX' || head == 'Wallet' || head == 'Bid' || head == 'Ask' || head == 'Est. ETH') {
+				if (head == 'Total' || head == 'EtherDelta' || head == 'Decentrex' || head == 'Token store' || head == 'IDEX' || head == 'Enclaves' || head == 'DEXY' || head == 'Ethen' || head == 'Wallet' || head == 'Bid' || head == 'Ask' || head == 'Est. ETH') {
 					if (cellValue !== "" && cellValue !== undefined) {
 						var dec = fixedDecimals;
 						if (head == 'Bid' || head == 'Ask') {
@@ -1410,29 +1522,34 @@
 						row$.append($('<td/>').html(cellValue));
 					}
 				}
+				else if (head == 'USD' || head == 'EUR') {
+					var num = '<span style="color:gray">' + cellValue + '</span>';
+					row$.append($('<td/>').html(num));
+				}
 				else if (head == 'Name') {
 					let token = _delta.uniqueTokens[myList[i].Address];
-					let popoverContents = _delta.makePopoverContents(token);
-					let labelClass = 'label-warning';
-					if (!myList[i].Unlisted)
-						labelClass = 'label-primary';
-
-					row$.append($('<td/>').html('<a tabindex="0" class="label ' + labelClass + '" role="button" data-html="true" data-toggle="popover" data-placement="auto right"  title="' + cellValue + '" data-container="body" data-content=\'' + popoverContents + '\'>' + cellValue + '</a>'));
+					if(token) {
+						let popover = _delta.makeTokenPopover(token);
+						row$.append($('<td/>').html(popover));
+					} else {
+						row$.append($('<td/>').html(""));
+					}
 				}
 				else {
 					row$.append($('<td/>').html(cellValue));
 				}
 			}
-			body.append(row$);
-			$("[data-toggle=popover]").popover();
-			$('[data-toggle=tooltip]').tooltip({
-				'placement': 'top',
-				'container': 'body'
-			});
+			tbody$.append(row$);
 		}
+		body.append(tbody$[0].innerHTML);
+		$("[data-toggle=popover]").popover();
+		$('[data-toggle=tooltip]').tooltip({
+			'placement': 'top',
+			'container': 'body'
+		});
 	}
 
-	var balanceHeaders = { 'Name': 1, 'Wallet': 1, 'EtherDelta': 1, 'IDEX': 1, 'Token store': 1, 'Decentrex': 1, 'Total': 1, 'Value': 1, 'Bid': 1, 'Ask': 0, 'Est. ETH': 1 };
+	var balanceHeaders = { 'Name': 1, 'Wallet': 1, 'EtherDelta': 1, 'IDEX': 1, 'Token store': 1, 'Enclaves': 1, 'Decentrex': 1, 'DEXY': 1, 'Ethen': 1, 'Total': 1, 'Value': 1, 'Bid': 1, 'Ask': 0, 'Est. ETH': 1, 'USD': 0, 'EUR': 0 };
 
 	// Adds a header row to the table and returns the set of columns.
 	// Need to do union of keys from all records as some records may not contain
@@ -1509,9 +1626,9 @@
 			var allBal = lastResult;
 			allBal = allBal.filter((x) => { return x.Total > 0; });
 
-			let bidText = 'EtherDelta Bid (ETH)';
+			let bidText = 'Bid (ETH)';
 			if (useAsk)
-				bidText = 'EtherDelta Ask (ETH)';
+				bidText = 'Ask (ETH)';
 
 			var AA = ['Token'];
 			Object.keys(exchanges).forEach(function (key) {
@@ -1547,7 +1664,7 @@
 
 				for (let j = 0; j < arr.length; j++) {
 					//remove exponential notation
-					if (A[0][j] == 'Wallet' || A[0][j] == 'EtherDelta' || A[0][j] == 'IDEX' || A[0][j] == 'Token store' || A[0][j] == 'Decentrex' || A[0][j] == 'Total' || A[0][j] == 'Estimated value (ETH)' || A[0][j] == 'EtherDelta Bid (ETH)' || A[0][j] == 'EtherDelta Ask (ETH)') {
+					if (A[0][j] == 'Wallet' || A[0][j] == 'EtherDelta' || A[0][j] == 'IDEX' || A[0][j] == 'Token store' || A[0][j] == 'Enclaves' || A[0][j] == 'Decentrex' || A[0][j] == 'DEXY' || A[0][j] == 'Ethen' || A[0][j] == 'Total' || A[0][j] == 'Estimated value (ETH)' || A[0][j] == 'Bid (ETH)' || A[0][j] == 'Ask (ETH)') {
 						if (arr[j] != '' && arr[j] != ' ')
 							arr[j] = _util.exportNotation(arr[j]);
 					}
@@ -1593,7 +1710,7 @@
 		setStorage();
 		window.location.hash = "";
 		$('#walletInfo').addClass('hidden');
-		if(!publicAddr && !savedAddr && !metamaskAddr) {
+		if (!publicAddr && !savedAddr && !metamaskAddr) {
 			$('#userToggle').click();
 			$('#userToggle').addClass('hidden');
 		}

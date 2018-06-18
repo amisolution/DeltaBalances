@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="description" content="View ERC20 token balances and decentralized exhcange trading history.">
+  <meta name="description" content="View ERC20 token balances and decentralized exchange trading history.">
   <meta content="width=device-width, initial-scale=1" name="viewport">
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png?1">
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png?1">
@@ -206,6 +206,18 @@
               </a>
             </li>
             <li>
+              <a id="historyNav8" href="history8.html">
+                <i class="sidebar-icon icon-enclaves"></i>
+                <span>EnclavesDex</span>
+              </a>
+            </li>
+            <li>
+              <a id="historyNav9" href="history9.html">
+                <strong class="sidebar-icon icon-ethen"> E</strong>
+                <span>ETHEN</span>
+              </a>
+            </li>
+            <li>
               <a id="historyNav3" href="history3.html">
                 <i class="sidebar-icon icon-decentrex"></i>
                 <span>Decentrex</span>
@@ -255,97 +267,110 @@
 
         <div class="row">
 
-          <div class="col-sm-12 col-md-8 col-lg-7" style="overflow:hidden;">
-            <div class="box box-default">
+          <div class="col-sm-12 col-md-8 col-lg-7 s-fullwidth" style="overflow:hidden;">
+            <div class="box box-default bottom10M">
               <!-- /.box-header -->
-              <div class="box-body">
-                <h2>Wallet overview</h2>
-                <div style="white-space:nowrap; overflow:hidden;">
-                  <div id="addrIcon" class="hidden-xs" style="float:left; display: inline-block; padding-left: 1%;"></div>
-                  <div class="hidden-xs" style="padding-left: 3%; float:left;">
-                    <p style="line-height:64px;display: inline-block;"> </p>
+              <div class="box-body noPadTop">
+                <div class="col-md-12 noPadM">
+                  <h2>Wallet overview</h2>
+                  <div style="white-space:nowrap; overflow:hidden;">
+                    <div id="addrIcon" class="hidden-xs" style="float:left; display: inline-block; padding-left: 1%;"></div>
+                    <div class="hidden-xs" style="padding-left: 3%; float:left;">
+                      <p style="line-height:64px;display: inline-block;"> </p>
+                    </div>
+                    <div style="float:left; white-space:nowrap;">
+                      <p style="line-height:64px; white-space:nowrap; font-size:21px; font-weight:normal; display: inline-block;" id="addr">Enter your public address </p>
+                    </div>
                   </div>
-                  <div style="float:left; white-space:nowrap;">
-                    <p style="line-height:64px; white-space:nowrap; font-size:21px; font-weight:normal; display: inline-block;" id="addr">Enter your public address </p>
-                  </div>
+                  <table class="table table-sm" cellspacing="0" cellpadding="0" id="overviewTable">
+                    <tr>
+                      <td>
+                        <span class=" hidden-xs">Total ETH balance:</span>
+                        <span class=" visible-xs">Total ETH:</span>
+                      </td>
+                      <td id='ethbalance'></td>
+                      <td id='ethbalancePrice'></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <span class=" hidden-xs">Total Wrapped ETH:</span>
+                        <span class=" visible-xs">Wrapped ETH:</span>
+                      </td>
+                      <td id='wethbalance'></td>
+                      <td id='wethbalancePrice'></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <span class=" hidden-xs">Estimated token value:</span>
+                        <span class=" visible-xs">Token value:</span>
+                      </td>
+                      <td id='tokenbalance'></td>
+                      <td id='tokenbalancePrice'></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <span class=" hidden-xs">Estimated total value:</span>
+                        <span class=" visible-xs">Total value:</span>
+                      </td>
+                      <td id='totalbalance'></td>
+                      <td id='totalbalancePrice'></td>
+                    </tr>
+                  </table>
                 </div>
-                <table class="table table-sm" cellspacing="0" cellpadding="0" id="overviewTable">
-                  <tr>
-                    <td>
-                      <span class=" hidden-xs">Total ETH balance:</span>
-                      <span class=" visible-xs">Total ETH:</span>
-                    </td>
-                    <td id='ethbalance'></td>
-                    <td id='ethbalancePrice'></td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <span class=" hidden-xs">Total Wrapped ETH:</span>
-                      <span class=" visible-xs">Wrapped ETH:</span>
-                    </td>
-                    <td id='wethbalance'></td>
-                    <td id='wethbalancePrice'></td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <span class=" hidden-xs">Estimated token value:</span>
-                      <span class=" visible-xs">Token value:</span>
-                    </td>
-                    <td id='tokenbalance'></td>
-                    <td id='tokenbalancePrice'></td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <span class=" hidden-xs">Estimated total value:</span>
-                      <span class=" visible-xs">Total value:</span>
-                    </td>
-                    <td id='totalbalance'></td>
-                    <td id='totalbalancePrice'></td>
-                  </tr>
-                </table>
-                <br>
                 <!-- /.box-body -->
               </div>
               <!-- /.box -->
             </div>
           </div>
 
-          <div class="col-sm-12 col-md-4 col-lg-3">
-            <div class="box box-default">
+          <div class="col-sm-12 col-md-4 col-lg-3 s-fullwidth">
+            <div class="box box-default bottom10M">
               <!-- /.box-header -->
-              <div class="box-header">
-                <h3>Settings</h3>
+              <div class="box-header noPadTop">
+                <div class="col-md-12 noPadM">
+                  <h3>Settings</h3>
+                </div>
                 <div class="box-tools pull-right">
                   <button type="button" class="btn btn-box-tool hidden-md hidden-lg" data-widget="collapse">
                     <i class="fa fa-minus"></i>
                   </button>
+
                 </div>
               </div>
-              <div id="setting-body" class="box-body">
-                <ul class="list-unstyled">
-                  <li>
-                    <input class="checkbox checkbox-info" type="checkbox" onclick="checkCustom()" id="custom">
-                    <label for="custom">Show unlisted tokens </label>
-                    <span id="tokencount"></span>
-                    <i class="hidden-xs fa fa-question" title="Unlisted tokens are not officially known on an exchange"></i>
-                  </li>
-                  <li>
-                    <input class="checkbox checkbox-info" type="checkbox" onclick="checkZero()" id="zero">
-                    <label for="zero">Hide zero balances</label>
-                  </li>
-                  <li>
-                    <input class="checkbox checkbox-info" type="checkbox" onclick="checkDecimal()" id="decimals">
-                    <label for="decimals">Show more decimals</label>
-                  </li>
-                  <li>
-                    <input class="checkbox checkbox-info" type="checkbox" onclick="checkDollars()" id="dollars">
-                    <label for="dollars">Show total $ value</label>
-                  </li>
-                  <li>
-                    <input class="checkbox checkbox-info" type="checkbox" onclick="checkAsk()" id="ask">
-                    <label for="ask">Use 'ask' price for estimate value</label>
-                  </li>
-                </ul>
+              <div id="setting-body" class="box-body noPadTop">
+                <div class="col-md-12 noPadM">
+                  <ul class="list-unstyled">
+                    <li>
+                      <input class="checkbox checkbox-info" type="checkbox" onclick="checkCustom()" id="custom">
+                      <label for="custom">Show unlisted tokens </label>
+                      <span id="tokencount"></span>
+                    </li>
+                    <li>
+                      <input class="checkbox checkbox-info" type="checkbox" onclick="checkZero()" id="zero">
+                      <label for="zero">Hide zero balances</label>
+                    </li>
+                    <li>
+                      <input class="checkbox checkbox-info" type="checkbox" onclick="checkDecimal()" id="decimals">
+                      <label for="decimals">Show more decimals</label>
+                    </li>
+                    <li>
+                      Total Value:
+                      <li>
+                        <select id="fiatSelect" onchange="selectFiat()" style="display:inline; width:125px;" class="form-control">
+                          <option value="0">ETH</option>
+                          <option value="1" selected>ETH & USD</option>
+                          <option value="2">ETH & EUR</option>
+                        </select>
+                      </li>
+                      Price estimate:
+                      <li>
+                        <select id="priceSelect" onchange="selectPrice()" style="display:inline; width:125px;" class="form-control">
+                          <option value="0" selected>Highest Bid</option>
+                          <option value="1">Lowest Ask</option>
+                        </select>
+                      </li>
+                  </ul>
+                </div>
               </div>
               <!-- /.box-body -->
             </div>
@@ -355,218 +380,240 @@
           <div class="col-md-12 col-lg-10">
             <h4> Load deposited balances for: </h4>
           </div>
-          <div class="col-md-12 col-lg-10" style="padding:0; margin:0;">
-            <div class="col-xs-6 col-md-3 ">
+          <div class="col-md-12 col-lg-10 s-fullwidth noPad">
+            <div class="col-xs-6 col-md-3 col-lg-2">
               <label id="EtherDeltaBox" class="box box-success box-solid exchange-box">
-                <div class="box-header">
+                <div class="box-header noPadTop">
                   <input checked class="checkbox checkbox-info" type="checkbox" onClick="checkExchange('EtherDelta')" id="EtherDelta">
                   <label for="EtherDelta">EtherDelta
-                    <span class="text75">(ForkDelta)</span>
+                    <span class="text70">ForkDelta</span>
                   </label>
                 </div>
               </label>
             </div>
-            <div class="col-xs-6 col-md-3 ">
+            <div class="col-xs-6 col-md-2 col-lg-2">
               <label id="IDEXBox" class="box box-success box-solid exchange-box">
-                <div class="box-header">
+                <div class="box-header noPadTop">
                   <input checked class="checkbox checkbox-info" type="checkbox" onClick="checkExchange('IDEX')" id="IDEX">
                   <label for="IDEX">IDEX </label>
                 </div>
               </label>
             </div>
 
-            <div class="col-xs-6 col-md-3 ">
+            <div class="col-xs-6 col-md-3 col-lg-2">
               <label id="storeBox" class="box box-success box-solid exchange-box">
-                <div class="box-header">
+                <div class="box-header noPadTop">
                   <input checked class="checkbox checkbox-info" type="checkbox" onClick="checkExchange('store')" id="store">
                   <label for="store">Token store </label>
                 </div>
               </label>
             </div>
-            <div class="col-xs-6 col-md-3 ">
+            <div class="col-xs-6 col-md-2 col-lg-2">
+              <label id="EnclavesBox" class="box box-success box-solid exchange-box">
+                <div class="box-header noPadTop">
+                  <input checked class="checkbox checkbox-info" type="checkbox" onClick="checkExchange('Enclaves')" id="Enclaves">
+                  <label for="Enclaves">Enclaves</label>
+                </div>
+              </label>
+            </div>
+            <div class="col-xs-6 col-md-2 col-lg-2">
               <label id="DecentrexBox" class="box box-success box-solid exchange-box">
-                <div class="box-header">
+                <div class="box-header noPadTop">
                   <input checked class="checkbox checkbox-info" type="checkbox" onClick="checkExchange('Decentrex')" id="Decentrex">
                   <label for="Decentrex">Decentrex</label>
                 </div>
               </label>
             </div>
+
           </div>
 
-          <div class="col-xs-12 col-md-12 col-lg-10">
+          <div class="col-xs-12 col-md-12 col-lg-10 s-fullwidth">
             <div class="box box-default">
               <!-- /.box-header -->
-              <div class="box-body">
-                <h2>Balances
-                  <button id='loadingBalances' onclick="getBalances()" class="fa fa-refresh" style="display:none;"></button>
-                  <span class="pull-right" style="padding-left:20px; display:inline-block; vertical-align: middle;font-weight: 400; font-size: 0.5em;">
-                    <input style="width:110px;" id="tablesearcher" class="search form-control" data-column="0" type="search" placeholder="filter tokens">
-                  </span>
-                </h2>
-                <span id="balanceProgress"> 0 Balances loaded</span>
-                <br>
-                <table class="tablesorter table table-striped" id="resultTable">
-                  <thead></thead>
-                  <tbody></tbody>
-                </table>
-                <br>
-                <span id="downloadBalances"></span>
-                <p id="customMessage"> Check 'show unlisted tokens' to show more tokens</p>
-                <p> Price estimates come from the ForkDelta orderbook </p>
-                <span class="label label-primary">Name</span> Listed on one or more
-                <span class="hidden-xs">supported</span> exchanges.
-                <br>
-                <span class="label label-warning">Name</span> Not listed, trades by address only.
+              <div class="box-body noPadTop">
+                <div class="col-md-12 noPadM">
+                  <h2>Balances
+                    <button id='loadingBalances' onclick="getBalances()" class="fa fa-refresh" style="display:none;"></button>
+                    <span class="pull-right" style="display:inline-block; vertical-align: middle;font-weight: 400; font-size: 0.5em;">
+                      <input style="width:110px;" id="tablesearcher" class="search form-control" data-column="0" type="search" placeholder="filter tokens">
+                    </span>
+                  </h2>
+                  <span id="balanceProgress"> 0 Balances loaded</span>
+                  <br>
+                </div>
+                <div class="col-md-12 noPad">
+                  <table class="tablesorter table table-striped" id="resultTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                  </table>
+                  <br>
+                </div>
+                <div class="col-md-12 noPadM">
+
+                  <span id="downloadBalances"></span>
+                  <p id="customMessage"> Check 'show unlisted tokens' to show more tokens</p>
+                  <p> Price estimates come from the EtherDelta & ForkDelta orderbooks</p>
+                  <span class="label label-primary">Name</span> Listed on one or more
+                  <span class="hidden-xs">supported</span> exchanges.
+                  <br>
+                  <span class="label label-warning">Name</span> Not listed, trades by address only.
+                </div>
               </div>
               <!-- /.box-body -->
             </div>
             <!-- /.box -->
           </div>
 
-          <div class="col-xs-12 col-md-12 col-lg-10">
-            <div class="box box-default">
+          <div class="col-xs-12 col-md-12 col-lg-10 s-fullwidth">
+            <div class="box box-default bottom10M">
+
               <!-- /.box-header -->
               <div class="box-body">
-                Check deposited tokens in:
-                <a href="https://etherdelta.com" target="_blank">EtherDelta</a> (
-                <a href="https://forkdelta.github.io" target="_blank">ForkDelta</a>),
-                <a href="https://token.store" target="_blank">Token Store</a>,
-                <a href="https://www.idex.market" target="_blank">IDEX</a> and <a href="https://github.com/decentrex/decentrex.github.io/blob/master/index.md" target="_blank">Decentrex</a>
-                <br>Wallet balances include tokens traded on: 0x Relayers,
-                <a href="https://airswap.io" target="_blank">AirSwap</a> and
-                <a href="https://kyber.network" target="_blank">Kyber Network</a>.
+                <div class="col-md-12 noPadM">
+                  Check deposited tokens in:
+                  <a href="https://etherdelta.com" target="_blank">EtherDelta</a> (
+                  <a href="https://forkdelta.github.io" target="_blank">ForkDelta</a>),
+                  <a href="https://token.store" target="_blank">Token Store</a>,
+                  <a href="https://www.idex.market" target="_blank">IDEX</a>,
+                  <a href="https://www.enclaves.io" target="_blank">EnclavesDex</a> and
+                  <a href="https://github.com/decentrex/decentrex.github.io/blob/master/index.md" target="_blank">Decentrex</a>.
+                  <br>Wallet balances include tokens traded on: 0x Relayers,
+                  <a href="https://airswap.io" target="_blank">AirSwap</a>, 
+                  <a href="https://kyber.network" target="_blank">Kyber Network</a> and 
+                  <a href="https://www.bancor.network" target="_blank">Bancor</a>.
+                </div>
+                <!-- /.box-body -->
               </div>
-              <!-- /.box-body -->
-            </div>
-            <!-- /.box -->
-          </div>
 
-        </div>
+              <!-- /.box -->
+            </div>
+
+          </div>
       </section>
       <!-- /.content -->
+      </div>
+      <!-- /.content-wrapper -->
+
+      <!-- Main Footer -->
+      <footer class="main-footer">
+        <!-- To the right -->
+        <div class="pull-right hidden-xs">
+        </div>
+        <p> Powered by
+          <a target="_blank" href="https://etherscan.io/">Etherscan</a> and
+          <a target="_blank" href="https://infura.io/">Infura</a>
+          <br> Contact:
+          <a target="_blank" href="https://github.com/DeltaBalances/DeltaBalances.github.io">GitHub</a> or
+          <a target="_blank" href="https://reddit.com/u/deltabalances">Reddit</a>
+          <br> Buy me a beer:
+          <a href="https://etherscan.io/address/0xf6E914D07d12636759868a61E52973d17ED7111B" target="_blank">0xf6E914D07d12636759868a61E52973d17ED7111B</a>
+        </p>
+      </footer>
+
+      <!-- Control Sidebar -->
+      <aside class="control-sidebar control-sidebar-dark">
+        <!-- Create the tabs -->
+        <ul class="nav nav-tabs nav-justified control-sidebar-tabs">
+          <li class="active">
+            <a href="#control-sidebar-home-tab" data-toggle="tab">
+              <i class="fa fa-home"></i>
+            </a>
+          </li>
+          <li>
+            <a href="#control-sidebar-settings-tab" data-toggle="tab">
+              <i class="fa fa-gears"></i>
+            </a>
+          </li>
+        </ul>
+        <!-- Tab panes -->
+        <div class="tab-content">
+          <!-- Home tab content -->
+          <div class="tab-pane active" id="control-sidebar-home-tab">
+            <h3 class="control-sidebar-heading">Active address</h3>
+            <ul class="control-sidebar-menu">
+              <li>
+                <a href="" onclick="return false" style="pointer-events: none;">
+                  <i id="currentAddrImg" class="menu-icon bg-red" style="width:32px; height:32px;"></i>
+                  <div class="menu-info">
+                    <h4 id="currentAddr" class="control-sidebar-subheading">0x......</h4>
+                    <p id="currentAddrDescr">Input address</p>
+                  </div>
+                </a>
+              </li>
+              <li id="walletInfo" class="hidden">
+                <a id="etherscan" href="#" target="_blank" class="menu-info control-sidebar-subheading">
+                  Etherscan
+                  <i class="fa fa-link pull-right"></i>
+                </a>
+                <a onclick="forget()" id="forget" href="#" class="menu-info control-sidebar-subheading">
+                  Forget
+                  <i class="fa fa-trash-o pull-right text-red"></i>
+                </a>
+                <a onclick="save()" id="save" href="#" class="hidden menu-info control-sidebar-subheading">
+                  Save
+                  <i class="fa fa-save pull-right text-blue"></i>
+                </a>
+              </li>
+            </ul>
+
+            <div id="savedSection" class="hidden">
+              <h3 class="control-sidebar-heading">Saved address</h3>
+              <ul class="control-sidebar-menu">
+                <li>
+                  <a onclick="loadSaved()" href="#">
+                    <i id="savedImage" class="menu-icon bg-red" style="width:32px; height:32px;"></i>
+                    <div class="menu-info">
+                      <h4 id="savedAddress" class="control-sidebar-subheading">0x12345678</h4>
+                      <p>Saved</p>
+                    </div>
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div id="metamaskSection" class="hidden">
+              <h3 class="control-sidebar-heading">Detected Address</h3>
+              <ul class="control-sidebar-menu">
+                <li>
+                  <a onclick="loadMetamask()" href="#">
+                    <i id="metamaskImage" class="menu-icon bg-red" style="width:32px; height:32px;"></i>
+                    <div class="menu-info">
+                      <h4 id="metamaskAddress" class="control-sidebar-subheading">0x12345678</h4>
+                      <p>Metamask</p>
+                    </div>
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+          </div>
+
+          <!-- /.tab-pane -->
+          <!-- Settings tab content -->
+          <div class="tab-pane" id="control-sidebar-settings-tab">
+            <form>
+              <h3 class="control-sidebar-heading">Nothing here yet</h3>
+            </form>
+          </div>
+          <!-- /.tab-pane -->
+        </div>
+      </aside>
+      <!-- /.control-sidebar -->
+      <div class="control-sidebar-bg"></div>
     </div>
-    <!-- /.content-wrapper -->
+    <!-- ./wrapper -->
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-116708935-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
 
-    <!-- Main Footer -->
-    <footer class="main-footer">
-      <!-- To the right -->
-      <div class="pull-right hidden-xs">
-      </div>
-      <p> Powered by
-        <a target="_blank" href="https://etherscan.io/">Etherscan</a> and
-        <a target="_blank" href="https://infura.io/">Infura</a>
-        <br> Contact:
-        <a target="_blank" href="https://github.com/DeltaBalances/DeltaBalances.github.io">GitHub</a> or 
-        <a target="_blank" href="https://reddit.com/u/deltabalances">Reddit</a>
-        <br> Buy me a beer:
-        <a href="https://etherscan.io/address/0xf6E914D07d12636759868a61E52973d17ED7111B" target="_blank">0xf6E914D07d12636759868a61E52973d17ED7111B</a>
-      </p>
-    </footer>
+      // track amount of visits, only when hosted on github
+      if (window.location.origin.indexOf('.github.io') !== -1) {
+        gtag('js', new Date());
+        gtag('config', 'UA-116708935-1');
+      }
 
-    <!-- Control Sidebar -->
-    <aside class="control-sidebar control-sidebar-dark">
-      <!-- Create the tabs -->
-      <ul class="nav nav-tabs nav-justified control-sidebar-tabs">
-        <li class="active">
-          <a href="#control-sidebar-home-tab" data-toggle="tab">
-            <i class="fa fa-home"></i>
-          </a>
-        </li>
-        <li>
-          <a href="#control-sidebar-settings-tab" data-toggle="tab">
-            <i class="fa fa-gears"></i>
-          </a>
-        </li>
-      </ul>
-      <!-- Tab panes -->
-      <div class="tab-content">
-        <!-- Home tab content -->
-        <div class="tab-pane active" id="control-sidebar-home-tab">
-          <h3 class="control-sidebar-heading">Active address</h3>
-          <ul class="control-sidebar-menu">
-            <li>
-              <a href="" onclick="return false" style="pointer-events: none;">
-                <i id="currentAddrImg" class="menu-icon bg-red" style="width:32px; height:32px;"></i>
-                <div class="menu-info">
-                  <h4 id="currentAddr" class="control-sidebar-subheading">0x......</h4>
-                  <p id="currentAddrDescr">Input address</p>
-                </div>
-              </a>
-            </li>
-            <li id="walletInfo" class="hidden">
-              <a id="etherscan" href="#" target="_blank" class="menu-info control-sidebar-subheading">
-                Etherscan
-                <i class="fa fa-link pull-right"></i>
-              </a>
-              <a onclick="forget()" id="forget" href="#" class="menu-info control-sidebar-subheading">
-                Forget
-                <i class="fa fa-trash-o pull-right text-red"></i>
-              </a>
-              <a onclick="save()" id="save" href="#" class="hidden menu-info control-sidebar-subheading">
-                Save
-                <i class="fa fa-save pull-right text-blue"></i>
-              </a>
-            </li>
-          </ul>
-
-          <div id="savedSection" class="hidden">
-            <h3 class="control-sidebar-heading">Saved address</h3>
-            <ul class="control-sidebar-menu">
-              <li>
-                <a onclick="loadSaved()" href="#">
-                  <i id="savedImage" class="menu-icon bg-red" style="width:32px; height:32px;"></i>
-                  <div class="menu-info">
-                    <h4 id="savedAddress" class="control-sidebar-subheading">0x12345678</h4>
-                    <p>Saved</p>
-                  </div>
-                </a>
-              </li>
-            </ul>
-          </div>
-          <div id="metamaskSection" class="hidden">
-            <h3 class="control-sidebar-heading">Detected Address</h3>
-            <ul class="control-sidebar-menu">
-              <li>
-                <a onclick="loadMetamask()" href="#">
-                  <i id="metamaskImage" class="menu-icon bg-red" style="width:32px; height:32px;"></i>
-                  <div class="menu-info">
-                    <h4 id="metamaskAddress" class="control-sidebar-subheading">0x12345678</h4>
-                    <p>Metamask</p>
-                  </div>
-                </a>
-              </li>
-            </ul>
-          </div>
-
-        </div>
-
-        <!-- /.tab-pane -->
-        <!-- Settings tab content -->
-        <div class="tab-pane" id="control-sidebar-settings-tab">
-          <form>
-            <h3 class="control-sidebar-heading">Nothing here yet</h3>
-          </form>
-        </div>
-        <!-- /.tab-pane -->
-      </div>
-    </aside>
-    <!-- /.control-sidebar -->
-    <div class="control-sidebar-bg"></div>
-  </div>
-  <!-- ./wrapper -->
-  <!-- Global site tag (gtag.js) - Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-116708935-1"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-
-    // track amount of visits, only when hosted on github
-    if (window.location.origin.indexOf('.github.io') !== -1) {
-      gtag('js', new Date());
-      gtag('config', 'UA-116708935-1');
-    }
-
-  </script>
+    </script>
 </body>
 
 </html>

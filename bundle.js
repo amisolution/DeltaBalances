@@ -2110,7 +2110,7 @@ const Web3 = require('web3');
 const Interface = require('ethers-contracts/interface.js');
 
 const state = {
-  savedABIs : [],
+  savedABIs: [],
   methodIDs: {}
 }
 
@@ -2123,12 +2123,12 @@ function _addABI(abiArray) {
 
     // Iterate new abi to generate method id's
     abiArray.map(function (abi) {
-      if(abi.name){
-        const signature = new Web3().sha3(abi.name + "(" + abi.inputs.map(function(input) {return input.type;}).join(",") + ")");
-        if(abi.type == "event"){
+      if (abi.name) {
+        const signature = new Web3().sha3(abi.name + "(" + abi.inputs.map(function (input) { return input.type; }).join(",") + ")");
+        if (abi.type == "event") {
           state.methodIDs[signature.slice(2)] = abi;
         }
-        else{
+        else {
           state.methodIDs[signature.slice(2, 10)] = abi;
         }
       }
@@ -2146,14 +2146,14 @@ function _removeABI(abiArray) {
 
     // Iterate new abi to generate method id's
     abiArray.map(function (abi) {
-      if(abi.name){
-        const signature = new Web3().sha3(abi.name + "(" + abi.inputs.map(function(input) {return input.type;}).join(",") + ")");
-        if(abi.type == "event"){
+      if (abi.name) {
+        const signature = new Web3().sha3(abi.name + "(" + abi.inputs.map(function (input) { return input.type; }).join(",") + ")");
+        if (abi.type == "event") {
           if (state.methodIDs[signature.slice(2)]) {
             delete state.methodIDs[signature.slice(2)];
           }
         }
-        else{
+        else {
           if (state.methodIDs[signature.slice(2, 10)]) {
             delete state.methodIDs[signature.slice(2, 10)];
           }
@@ -2185,20 +2185,20 @@ function _decodeMethod(data) {
         const isInt = abiItem.inputs[index].type.indexOf("int") == 0;
 
         if (isUint || isInt) {
-		  parsedParam = parseArrayNumber(param);
-			
-		  function parseArrayNumber (param2) {
-		    let parsedParam2 = param2;
-			const isArray = Array.isArray(param2);
-			
-			if (isArray) {
-			  parsedParam2 = param2.map(val => parseArrayNumber(val));
-			} else {
-			  parsedParam2 = new Web3().toBigNumber(param2).toString();
-			}
-			return parsedParam2;
-		  }
-		  
+          parsedParam = parseArrayNumber(param);
+
+          function parseArrayNumber(param2) {
+            let parsedParam2 = param2;
+            const isArray = Array.isArray(param2);
+
+            if (isArray) {
+              parsedParam2 = param2.map(val => parseArrayNumber(val));
+            } else {
+              parsedParam2 = new Web3().toBigNumber(param2).toString();
+            }
+            return parsedParam2;
+          }
+
         }
         return {
           name: abiItem.inputs[index].name,
@@ -2210,7 +2210,7 @@ function _decodeMethod(data) {
   }
 }
 
-function padZeros (address) {
+function padZeros(address) {
   var formatted = address;
   if (address.indexOf('0x') != -1) {
     formatted = address.slice(2);
@@ -2224,10 +2224,29 @@ function padZeros (address) {
 };
 
 function _decodeLogs(logs) {
-  return logs.map(function(logItem) {
+  return logs.map(function (logItem) {
     const methodID = logItem.topics[0].slice(2);
-    const method = state.methodIDs[methodID];
+    let method = state.methodIDs[methodID];
     if (method) {
+
+      ///////////////////////////
+
+      /* overload hack (indexed vs non-indexed), just assume first topic.length args are indexed */
+
+      //check if we have indexd topics, but ABI doesn't have indexed
+      const isIndexed = logItem.topics && logItem.topics.length > 1 && !method.inputs.reduce((acc, inp) => { return (acc || inp.indexed); }, false);
+      if (isIndexed) {
+        for (let i = 0; i < method.inputs.length; i++) {
+          let name = method.inputs[i].name;
+          if (name == 'token' || name == 'user' || name == 'tokenGet' || name == 'tokenGive' || name == 'get' || name == 'give') {
+            method.inputs[i].indexed = true;
+          }
+        }
+      }
+
+      ///////////////////////////
+
+
       const logData = logItem.data;
       let decodedParams = [];
       let dataIndex = 0;
@@ -2259,22 +2278,33 @@ function _decodeLogs(logs) {
           dataIndex++;
         }
 
-        if (param.type == "address"){
+        if (param.type == "address") {
           decodedP.value = padZeros(new Web3().toBigNumber(decodedP.value).toString(16));
         }
-        else if(param.type == "uint256" || param.type == "uint8" || param.type == "int" ){
+        else if (param.type == "uint256" || param.type == "uint8" || param.type == "int") {
           decodedP.value = new Web3().toBigNumber(decodedP.value).toString(10);
         }
 
         decodedParams.push(decodedP);
       });
 
+      ///////////////////////////
+
+      /* restore hack above */
+      if (isIndexed) {
+        for (let i = 0; i < method.inputs.length; i++) {
+          method.inputs[i].indexed = false;
+        }
+      }
+
+      ///////////////////////////
 
       return {
         name: method.name,
         events: decodedParams,
         address: logItem.address,
-        blockNumber: logItem.blockNumber
+        blockNumber: logItem.blockNumber,
+        hash: logItem.transactionHash,
       };
     }
   });
@@ -2306,6 +2336,7 @@ function DeltaBalances() {
     this.socket = null;
     this.socketConnected = false;
     this.config = config;
+    this.binanceMap = {};
 }
 
 DeltaBalances.prototype.socketTicker = function socketTicker(callback, rqid) {
@@ -2455,6 +2486,14 @@ DeltaBalances.prototype.loadWeb3 = function loadWeb3(wait, callback) {
         }
     });
 
+    let timedOut = false;
+    setTimeout(function () {
+        if (detected >= 1 && !calledBack) {
+            console.log('web3 search timed out');
+            calledBack = true;
+            callback();
+        }
+    }, 2000);
 
     for (let i = 0; i < urls.length; i++) {
         let provider = urls[i];
@@ -2523,154 +2562,203 @@ DeltaBalances.prototype.initContracts = function initContracts(callback) {
 };
 
 DeltaBalances.prototype.initTokens = function (useBlacklist) {
-    //import of etherdelta config
-    if (etherDeltaConfig && etherDeltaConfig.tokens) {
-        _delta.config.tokens = etherDeltaConfig.tokens;
-    }
-    else {
-        showError('failed to load token data');
-        return;
-    }
 
-    // note all listed tokens
-    for (var i = 0; i < this.config.tokens.length; i++) {
-        var token = this.config.tokens[i];
-        if (token) {
-            token.name = utility.escapeHtml(token.name); // escape nasty stuff in token symbol/name
-            token.addr = token.addr.toLowerCase();
-            token.EtherDelta = true;
-            token.unlisted = false;
-            this.config.tokens[i] = token;
-            if ((!useBlacklist || (!useBlacklist || !tokenBlacklist[token.addr])) && !this.uniqueTokens[token.addr]) {
-                this.uniqueTokens[token.addr] = token;
-            }
+    let smartKeys = Object.keys(smartRelays);
+    let smartrelays = Object.values(smartRelays);
+
+    for (var i = 0; i < smartrelays.length; i++) {
+        tokenBlacklist[smartKeys[i]] = smartrelays[i];
+        if (!this.uniqueTokens[smartKeys[i]]) {
+            let token = { addr: smartKeys[i], name: smartrelays[i], decimals: 18, unlisted: true };
+            this.uniqueTokens[token.addr] = token;
         }
     }
 
-    // check for listed tokens at forkdelta
-    let forkTokens = [];
-    if (forkDeltaConfig && forkDeltaConfig.tokens) {
-        forkTokens = forkDeltaConfig.tokens;
-    } else {
-        forkTokens = forkOfflineTokens;
-    }
 
-    //forkTokens = forkTokens.filter((x) => { return !(this.uniqueTokens[x.addr]) });
-    for (var i = 0; i < forkTokens.length; i++) {
-        var token = forkTokens[i];
-        if (token) {
-            token.name = utility.escapeHtml(token.name); // escape nasty stuff in token symbol/name
-            token.addr = token.addr.toLowerCase();
-            token.unlisted = false;
-            token.ForkDelta = true;
-            if (this.uniqueTokens[token.addr]) {
-                this.uniqueTokens[token.addr].ForkDelta = true;
-            }
-            else if ((!useBlacklist || !tokenBlacklist[token.addr]) && !this.uniqueTokens[token.addr]) {
-                this.uniqueTokens[token.addr] = token;
-                this.config.tokens.push(token);
-            }
-        }
-    }
-
-    let ddexTokens = [];
-    if (ddexConfig && ddexConfig.tokens) {
-        ddexTokens = ddexConfig.tokens;
-    } else {
-        ddexTokens = ddexOfflineTokens;
-    }
-    for (var i = 0; i < ddexTokens.length; i++) {
-        var tok = ddexTokens[i];
-        if (tok) {
-            let token = {};
-            token.addr = tok.address.toLowerCase();
-            token.name = utility.escapeHtml(tok.symbol); // escape nasty stuff in token symbol/name
-
-            token.decimals = tok.decimals;
-            token.unlisted = false;
-            token.DDEX = true;
-            token.DDEXname = token.name;
-            if (this.uniqueTokens[token.addr]) {
-                this.uniqueTokens[token.addr].DDEX = true;
-                if (this.uniqueTokens[token.addr].name !== token.name) {
-                    this.uniqueTokens[token.addr].DDEXname = name;
-                }
-            }
-            else if ((!useBlacklist || !tokenBlacklist[token.addr]) && !this.uniqueTokens[token.addr]) {
-                this.uniqueTokens[token.addr] = token;
-                this.config.tokens.push(token);
-            }
-        }
-    }
-
-    //format MEW tokens like ED tokens
+    //format list of all tokens like ED tokens
     offlineCustomTokens = offlineCustomTokens.map((x) => {
 
         let unlisted = true;
         if (x.address && x.symbol) {
             let addr = x.address.toLowerCase();
             //make sure WETH appears listed 
-            if (utility.isWrappedETH(addr)) {
+            if (utility.isWrappedETH(addr) || utility.isNonEthBase(addr)) {
                 unlisted = false;
             }
-            return {
+            var token = {
                 "name": utility.escapeHtml(x.symbol),
                 "addr": addr,
                 "unlisted": unlisted,
                 "decimals": x.decimal,
             };
+            if (x.name) {
+                token.name2 = utility.escapeHtml(x.name);
+            }
+            if (x.locked) {
+                token.locked = true;
+            }
+
+            let listedExchanges = ['EtherDelta', 'ForkDelta', 'IDEX', 'DDEX', 'Binance'];
+            for (let i = 0; i < listedExchanges.length; i++) {
+                let exchange = listedExchanges[i];
+                if (x[exchange]) {
+                    token[exchange] = x[exchange];
+                    token.unlisted = false;
+                }
+            }
+
+            return token;
         } else {
-            return this.config.tokens[0]; //filtered out next step
+            return undefined;
         }
     });
-    //filter out custom tokens that have been listed by now
-    this.config.customTokens = offlineCustomTokens.filter((x) => { return !(this.uniqueTokens[x.addr] && !(tokenBlacklist[x.addr])) });
-    // note custom tokens
-    for (var i = 0; i < this.config.customTokens.length; i++) {
-        var token = this.config.customTokens[i];
-        if (token && (!useBlacklist || !tokenBlacklist[token.addr]) && !this.uniqueTokens[token.addr]) {
-            this.uniqueTokens[token.addr] = token;
-            if (!token.unlisted) {
-                this.config.tokens.push(token);
+
+    // register all tokens (nearly all unlisted)
+    for (var i = 0; i < offlineCustomTokens.length; i++) {
+        var token = offlineCustomTokens[i];
+
+        if (token) {
+
+            if (token.Binance) {
+                //mapping for Binance API and urls
+                this.binanceMap[token.Binance] = token.addr;
+            }
+
+            if (this.uniqueTokens[token.addr]) {
+                if (!token.unlisted) {
+                    this.uniqueTokens[token.addr].unlisted = false;
+                }
+            }
+            else {
+                this.uniqueTokens[token.addr] = token;
             }
         }
     }
 
-    // treat tokens listed as staging as unlisted custom tokens
-    if (stagingTokens && stagingTokens.tokens) {
-        //filter tokens that we already know
-        var stageTokens = stagingTokens.tokens.filter((x) => { return !(this.uniqueTokens[x.addr]) });
-        for (var i = 0; i < stageTokens.length; i++) {
-            var token = stageTokens[i];
+    //check listed tokens with updated/cached exchange listings  (not in backupTokens.js)
+
+    try {
+        // check for listed tokens at forkdelta
+        let forkTokens = [];
+        if (forkDeltaConfig && forkDeltaConfig.tokens) {
+            forkTokens = forkDeltaConfig.tokens;
+        }
+        //forkTokens = forkTokens.filter((x) => { return !(this.uniqueTokens[x.addr]) });
+        for (var i = 0; i < forkTokens.length; i++) {
+            var token = forkTokens[i];
             if (token) {
                 token.name = utility.escapeHtml(token.name); // escape nasty stuff in token symbol/name
                 token.addr = token.addr.toLowerCase();
-                token.unlisted = true;
-                if ((!useBlacklist || !tokenBlacklist[token.addr]) && !this.uniqueTokens[token.addr]) {
+                token.unlisted = false;
+                token.ForkDelta = token.name;
+
+                if (token.fullName && token.fullName !== "") {
+                    token.name2 = token.fullName;
+                }
+
+                if (this.uniqueTokens[token.addr]) {
+                    this.uniqueTokens[token.addr].ForkDelta = token.name;
+                    this.uniqueTokens[token.addr].unlisted = false;
+
+                    if (token.name2 && !this.uniqueTokens[token.addr].name2) {
+                        this.uniqueTokens[token.addr].name2 = token.name2;
+                    }
+                }
+                else {
                     this.uniqueTokens[token.addr] = token;
-                    this.config.customTokens.push(token);
                 }
             }
         }
+    } catch (e) {
+        console.log('failed to parse ForkDelta token list');
     }
 
-    //check listing for idex
-    for (var i = 0; i < idexConfig.length; i++) {
-        var token = idexConfig[i];
-        token.address = token.addr.toLowerCase();
-        if (this.uniqueTokens[token.addr]) {
-            this.uniqueTokens[token.addr].IDEX = true;
-            if (token.name !== this.uniqueTokens[token.addr].name) {
-                this.uniqueTokens[token.addr].IDEXname = token.name;
-            }
-            if (this.uniqueTokens[token.addr].unlisted) {
-                this.uniqueTokens[token.addr].unlisted = false;
-                this.config.tokens.push(this.uniqueTokens[token.addr]);
-            }
-
+    try {
+        //ddex listed tokens
+        let ddexTokens = [];
+        if (ddexConfig && ddexConfig.tokens) {
+            ddexTokens = ddexConfig.tokens;
         }
+        for (var i = 0; i < ddexTokens.length; i++) {
+            var tok = ddexTokens[i];
+            if (tok) {
+                let token = {};
+                token.addr = tok.address.toLowerCase();
+                token.name = utility.escapeHtml(tok.symbol); // escape nasty stuff in token symbol/name
+
+                token.decimals = tok.decimals;
+                token.unlisted = false;
+                token.DDEX = token.name;
+                if (this.uniqueTokens[token.addr]) {
+                    this.uniqueTokens[token.addr].DDEX = token.name;
+                    this.uniqueTokens[token.addr].unlisted = false;
+                }
+                else {
+                    this.uniqueTokens[token.addr] = token;
+                }
+            }
+        }
+    } catch (e) {
+        console.log('failed to parse DDEX token list');
     }
 
+    try {
+        //check listing for idex
+        for (var i = 0; i < idexConfig.length; i++) {
+            var token = idexConfig[i];
+            token.addr = token.addr.toLowerCase();
+            token.IDEX = token.name;
+            token.unlisted = false;
+            if (this.uniqueTokens[token.addr]) {
+                this.uniqueTokens[token.addr].IDEX = token.name;
+                this.uniqueTokens[token.addr].unlisted = false;
+
+                if (token.name2 && !this.uniqueTokens[token.addr].name2) {
+                    this.uniqueTokens[token.addr].name2 = token.name2;
+                }
+            }
+            else {
+                this.uniqueTokens[token.addr] = token;
+            }
+        }
+    } catch (e) {
+        console.log('failed to parse IDEX token list');
+    }
+
+
+
+    try {
+        //unknown tokens saved from etherscan responses
+        for (var i = 0; i < unknownTokenCache.length; i++) {
+            var token = unknownTokenCache[i];
+            if (token.name && token.name !== "") {
+
+                token.addr = token.addr.toLowerCase();
+                token.name = utility.escapeHtml(token.name);
+                token.decimals = Number(token.decimals);
+                if (token.name2) {
+                    token.name2 = utility.escapeHtml(token.name2);
+                }
+                token.unlisted = true;
+                if (this.uniqueTokens[token.addr]) {
+
+                    if (token.name2 && !this.uniqueTokens[token.addr].name2) {
+                        this.uniqueTokens[token.addr].name2 = token.name2;
+                    }
+                }
+                else {
+                    this.uniqueTokens[token.addr] = token;
+                }
+            }
+        }
+    } catch (e) {
+        console.log('failed to parse unknown token list');
+    }
+
+    let ethAddr = this.config.ethAddr;
+    this.config.customTokens = Object.values(_delta.uniqueTokens).filter((x) => { return !tokenBlacklist[x.addr]; });
+    let listedTokens = Object.values(_delta.uniqueTokens).filter((x) => { return (!x.unlisted && !tokenBlacklist[x.addr] && x.addr !== ethAddr); });
+    this.config.tokens = [this.uniqueTokens[ethAddr]].concat(listedTokens);
 }
 
 DeltaBalances.prototype.setToken = function (address) {
@@ -2696,7 +2784,7 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
     try {
         if (unpacked && unpacked.name) {
             if (unpacked.name === 'transfer') {
-                var to = unpacked.params[0].value;
+                var to = unpacked.params[0].value.toLowerCase();
                 var rawAmount = unpacked.params[1].value;
                 var amount = new BigNumber(0);
                 var token = badFromTo ? this.setToken(tx.contractAddress) : this.setToken(tx.to);
@@ -2712,7 +2800,7 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
                         'note': 'Give the token contract the order to transfer your tokens',
                         'token': token,
                         'amount': amount,
-                        'from': tx.from,
+                        'from': tx.from.toLowerCase(),
                         'to': to,
                         'unlisted': unlisted,
                     };
@@ -2752,7 +2840,7 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
                 return obj;
             }
             // exchange deposit/withdraw and 0x WETH (un)wrapping
-            else if (unpacked.name === 'deposit' || unpacked.name === 'withdraw') {
+            else if (unpacked.name === 'deposit' || unpacked.name === 'withdraw' || unpacked.name === 'withdrawEther' || unpacked.name === 'depositEther') {
                 var type = '';
                 var note = '';
                 var rawVal = new BigNumber(0);
@@ -2760,8 +2848,8 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
                 var token2 = undefined;
                 var exchange = '';
 
-                if (unpacked.name === 'deposit') {
-                    rawVal = tx.value;
+                if (unpacked.name === 'deposit' || unpacked.name === 'depositEther') {
+                    rawVal = new BigNumber(tx.value);
                     if (!utility.isWrappedETH(tx.to) && !badFromTo) {
                         type = 'Deposit';
                         let addrName = this.addressName(tx.to);
@@ -2790,7 +2878,7 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
                             note = 'Request the exchange contract to withdraw ETH';
                         }
                     } else {
-                        type = 'Unwrap WETH';
+                        type = 'Unwrap ETH';
                         note = 'Unwrap WETH to ETH';
                         token = badFromTo ? this.setToken(tx.contractAddress) : this.setToken(tx.to);
                         token2 = this.setToken(this.config.ethAddr);
@@ -2819,7 +2907,7 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
                     return obj;
                 }
             }
-            else if (unpacked.name === 'depositToken' || unpacked.name === 'withdrawToken') {
+            else if (unpacked.name === 'depositToken' || unpacked.name === 'withdrawToken' || /* enclaves */ unpacked.name === 'withdrawBoth' || unpacked.name === 'depositBoth') {
                 var token = this.setToken(unpacked.params[0].value);
                 if (token && token.addr) {
                     var unlisted = token.unlisted;
@@ -2838,7 +2926,7 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
                         exchange = addrName;
                     }
 
-                    if (unpacked.name === 'withdrawToken') {
+                    if (unpacked.name === 'withdrawToken' || unpacked.name === 'withdrawBoth') {
                         type = 'Withdraw';
                         if (exchange) {
                             note = 'Request the ' + exchange + 'contracy to withdraw ' + token.name;
@@ -2863,6 +2951,23 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
                         'amount': val,
                         'unlisted': unlisted,
                     };
+
+                    //enclaves dex , move tokens and ETH
+                    if (unpacked.name === 'withdrawBoth' || unpacked.name === 'depositBoth') {
+                        obj.type = 'Token & ETH ' + type;
+                        obj.base = this.setToken(this.config.ethAddr);
+
+
+                        let rawEthVal = new BigNumber(0);
+                        if (unpacked.name === 'withdrawBoth') {
+                            rawEthVal = new BigNumber(unpacked.params[2].value);
+                        } else {
+                            rawEthVal = new BigNumber(tx.value);
+                        }
+                        let ethVal = utility.weiToEth(rawEthVal);
+                        obj.baseAmount = ethVal;
+                    }
+
                     return obj;
                 }
             }
@@ -3182,8 +3287,8 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
                 };
                 return obj;
             }
-            // etherdelta/decentrex/tokenstore use 11, idex has 4
-            else if (!badFromTo && unpacked.name === 'trade' && (unpacked.params.length == 11 || unpacked.params.length == 4)) {
+            // etherdelta/decentrex/tokenstore use 11, idex has 4, enclaves has 12
+            else if (!badFromTo && (unpacked.name === 'trade' && (unpacked.params.length == 11 || unpacked.params.length == 12 || unpacked.params.length == 4) || unpacked.name === 'tradeEtherDelta')) {
 
                 let idex = false;
                 //make idex trades fit the old etherdelta format
@@ -3334,6 +3439,82 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
                         obj['FeeToken '] = makeFeeCurrency;
                     }
                     return obj;
+                }
+            } else if (!badFromTo && unpacked.name === 'trade' && unpacked.params.length == 3) {
+
+                let _delta = this;
+                let numberOfTrades = unpacked.params[1].value.length - 1;
+                var objs = [];
+                for (let i = 0; i < numberOfTrades; i++) {
+
+                    let offset = i * 10;
+
+                    var obj = unpackOrderInput(
+                        Number(unpacked.params[0].value[0 + offset]) > 0,
+                        new BigNumber(unpacked.params[0].value[6 + offset]),
+                        new BigNumber(unpacked.params[0].value[5 + offset]),
+                        unpacked.params[1].value[0].toLowerCase(),
+                        unpacked.params[1].value[i + 1]
+                    );
+
+                    if (obj)
+                        objs.push(obj);
+                }
+                if (objs && objs.length > 0) {
+                    return objs;
+                } else {
+                    return undefined;
+                }
+
+                function unpackOrderInput(isBuy, amount, price, inputToken, maker) {
+                    var tradeType = 'Sell';
+                    if (isBuy) {
+                        tradeType = 'Buy';
+                    }
+                    var token = _delta.setToken(inputToken);
+                    var base = _delta.setToken(_delta.config.ethAddr);
+
+                    var exchange = '';
+                    let addrName = _delta.addressName(tx.to);
+                    if (addrName.indexOf('0x') === -1) {
+                        exchange = addrName;
+                    }
+
+                    if (token && base && token.addr && base.addr) {
+
+                        var unlisted = token.unlisted;
+                        var dvsr = _delta.divisorFromDecimals(token.decimals)
+                        var dvsr2 = _delta.divisorFromDecimals(base.decimals)
+                        var val = utility.weiToEth(amount, dvsr);
+
+                        // price in 1e18
+                        price = utility.weiToEth(price, dvsr2);
+                        let dvsr3 = _delta.divisorFromDecimals(base.decimals - token.decimals)
+                        price = utility.weiToEth(price, dvsr3);
+
+                        var val2 = val.times(price);
+
+
+                        let takerAddr = tx.from.toLowerCase();
+                        let makerAddr = maker.toLowerCase();
+
+                        var obj = {
+                            'type': 'Taker ' + tradeType,
+                            'exchange': exchange,
+                            'note': utility.addressLink(takerAddr, true, true) + ' selected ' + utility.addressLink(makerAddr, true, true) + '\'s order in the orderbook to trade.',
+                            'token': token,
+                            'amount': val,
+                            'price': price,
+                            'base': base,
+                            'baseAmount': val2,
+                            //   'order size': orderSize,
+                            'unlisted': unlisted,
+                            'taker': takerAddr,
+                            'maker': makerAddr,
+                        };
+                        return obj;
+                    }
+                    return undefined;
                 }
             }
             //kyber trade input
@@ -3747,7 +3928,7 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
                     return obj;
                 }
                 //oasisdex buy
-            } else if (unpacked.name == 'buy') {
+            } else if (unpacked.name == 'buy' && unpacked.params.length == 2) {
 
                 var exchange = '';
                 let addrName = this.addressName(tx.to);
@@ -3766,6 +3947,102 @@ DeltaBalances.prototype.processUnpackedInput = function (tx, unpacked) {
                     'note': ' Fill a trade order',
                 };
                 return obj;
+            } else if (unpacked.name === 'quickConvert' || unpacked.name === 'quickConvertPrioritized' || (unpacked.name === 'convert' && unpacked.params.length == 4)) {
+                //  function quickConvert(IERC20Token[] _path, uint256 _amount, uint256 _minReturn)
+                // function quickConvertPrioritized(IERC20Token[] _path, uint256 _amount, uint256 _minReturn, uint256 _block, uint256 _nonce, uint8 _v, bytes32 _r, bytes32 _s)
+
+                //convert(IERC20Token _fromToken, IERC20Token _toToken, uint256 _amount, uint256 _minReturn)
+
+                if (unpacked.name === 'convert') {
+                    let params2 = [];
+                    params2[0] = { value: [unpacked.params[0].value, unpacked.params[1].value] };
+                    params2[1] = { value: unpacked.params[2].value };
+                    params2[2] = { value: unpacked.params[3].value };
+                    unpacked.params = params2;
+                }
+
+
+                var tradeType = 'Sell';
+                var token = undefined;
+                var token2 = undefined;
+
+                let tokenPath = unpacked.params[0].value;
+
+                let tokenGive = this.setToken(tokenPath[tokenPath.length - 1]);
+                let tokenGet = this.setToken(tokenPath[0]);
+
+                var exchange = 'Bancor';
+
+                if (utility.isWrappedETH(tokenGet.addr) || (!utility.isWrappedETH(tokenGive.addr) && utility.isNonEthBase(tokenGive.addr))) // get eth  -> sell
+                {
+                    tradeType = 'Buy';
+                    token = tokenGive;
+                    token2 = tokenGet;
+                }
+                else if (utility.isWrappedETH(tokenGive.addr) || (!utility.isWrappedETH(tokenGet.addr) && utility.isNonEthBase(tokenGet.addr))) // buy
+                {
+                    tradeType = 'Sell';
+                    token = tokenGet;
+                    token2 = tokenGive;
+                }
+                else {
+                    console.log('unknown base token');
+                    return undefined;
+                }
+
+                if (token && token2 && token.addr && token2.addr) {
+                    var amount = new BigNumber(0);
+                    var oppositeAmount = new BigNumber(0);
+                    if (tradeType === 'Sell') {
+                        amount = new BigNumber(unpacked.params[1].value);
+                        oppositeAmount = new BigNumber(unpacked.params[2].value);
+                    } else {
+                        oppositeAmount = new BigNumber(unpacked.params[1].value);
+                        amount = new BigNumber(unpacked.params[2].value);
+                    }
+
+                    var unlisted = token.unlisted;
+                    var dvsr = this.divisorFromDecimals(token.decimals)
+                    var dvsr2 = this.divisorFromDecimals(token2.decimals)
+                    var val = utility.weiToEth(amount, dvsr);
+                    var val2 = utility.weiToEth(oppositeAmount, dvsr2);
+
+                    var orderSize = new BigNumber(0);
+                    var price = new BigNumber(0);
+                    if (val.greaterThan(0)) {
+                        price = val2.div(val);
+                    }
+
+                    // let makerAddr = tx.from.toLowerCase();
+
+                    var obj = undefined;
+                    if (tradeType === 'Sell') {
+                        obj = {
+                            'type': tradeType + ' up to',
+                            'exchange': exchange,
+                            'note': 'bancor token conversion',
+                            'token': token,
+                            'amount': val,
+                            'minPrice': price,
+                            'base': token2,
+                            'estBaseAmount': val2,
+                            'unlisted': unlisted,
+                        };
+                    } else {
+                        obj = {
+                            'type': tradeType + ' up to',
+                            'exchange': exchange,
+                            'note': 'bancor token conversion',
+                            'token': token,
+                            'estAmount': val,
+                            'maxPrice': price,
+                            'base': token2,
+                            'baseAmount': val2,
+                            'unlisted': unlisted,
+                        };
+                    }
+                    return obj;
+                }
             }
             //idex adminWithdraw(address token, uint256 amount, address user, uint256 nonce, uint8 v, bytes32 r, bytes32 s, uint256 feeWithdrawal)
             else if (unpacked.name === 'adminWithdraw') {
@@ -3862,11 +4139,17 @@ DeltaBalances.prototype.addressName = function (addr, showAddr) {
     else if (lcAddr === this.config.contractOasisDirectAddr) {
         return 'OasisDirect ' + (showAddr ? lcAddr : '');
     }
-    else if (lcAddr === this.config.contractBancorQuickAddr) {
+    else if (lcAddr === this.config.contractBancorQuickAddr || lcAddr === this.config.contractBancorQuick2Addr) {
         return 'BancorQuick ' + (showAddr ? lcAddr : '');
     }
-    else if (lcAddr === this.config.contractEnclavesAddr) {
-        return 'EnclavesDex ' + (showAddr ? lcAddr : '');
+    else if (lcAddr === this.config.contractEnclavesAddr || lcAddr === this.config.contractEnclaves2Addr) {
+        return 'Enclaves ' + (showAddr ? lcAddr : '');
+    }
+    else if (lcAddr === this.config.contractDexyAddr || lcAddr === this.config.contractDexy2Addr) {
+        return 'DEXY ' + (showAddr ? lcAddr : '');
+    }
+    else if (lcAddr == this.config.contractEthenAddr) {
+        return 'ETHEN ' + (showAddr ? lcAddr : '');
     }
     else if (lcAddr == this.config.contractDecentrexAddr) {
         return 'Decentrex ' + (showAddr ? lcAddr : '');
@@ -3878,6 +4161,9 @@ DeltaBalances.prototype.addressName = function (addr, showAddr) {
     }
     else if (lcAddr == this.config.paradexAdminAddr) {
         return 'Paradex admin ' + (showAddr ? lcAddr : '');
+    }
+    else if (this.config.contract0xRelayers[lcAddr]) {
+        return this.config.contract0xRelayers[lcAddr] + ' fee addr';
     }
     else {
         for (var i = 0; i < this.config.contractEtherDeltaAddrs.length; i++) {
@@ -3914,6 +4200,11 @@ DeltaBalances.prototype.isExchangeAddress = function (addr) {
         || lcAddr === this.config.contractAirSwapAddr
         || lcAddr === this.config.contractKyberAddr
         || lcAddr === this.config.contractOasisDexAddr
+        || lcAddr === this.config.contractEnclavesAddr
+        //    || lcAddr === this.config.contractEnclaves2Addr
+        //    || lcAddr === this.config.contractDexyAddr
+        //    || lcAddr === this.config.contractDexy2Addr
+        || lcAddr === this.config.contractEthenAddr
     ) {
         return true;
     } else {
@@ -3930,8 +4221,8 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
     try {
         if (unpacked && unpacked.events) {
 
-            // etherdelta, decentrex, tokenstore, idex?
-            if (unpacked.name == 'Trade' && unpacked.events.length == 6 || unpacked.events.length == 7) {
+            // etherdelta, decentrex, tokenstore, enclaves
+            if (unpacked.name == 'Trade' && (unpacked.events.length == 6 || unpacked.events.length == 7) && unpacked.address !== this.config.contractEthenAddr) {
                 var tradeType = 'Sell';
                 var token = undefined;
                 var base = undefined;
@@ -3967,6 +4258,7 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
 
                 var exchange = '';
                 let addrName = this.addressName(unpacked.address);
+
                 if (addrName.indexOf('0x') === -1) {
                     exchange = addrName;
                 }
@@ -3979,13 +4271,13 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
                     if (tradeType === 'Sell') {
                         amount = new BigNumber(unpacked.events[1].value);
                         oppositeAmount = new BigNumber(unpacked.events[3].value);
-                        sellUser = unpacked.events[5].value;
-                        buyUser = unpacked.events[4].value;
+                        sellUser = taker;
+                        buyUser = maker;
                     } else {
                         oppositeAmount = new BigNumber(unpacked.events[1].value);
                         amount = new BigNumber(unpacked.events[3].value);
-                        sellUser = unpacked.events[4].value;
-                        buyUser = unpacked.events[5].value;
+                        sellUser = maker;
+                        buyUser = taker;
                     }
 
                     var unlisted = token.unlisted;
@@ -4012,6 +4304,16 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
 
                     if (exchange == 'EtherDelta ' || exchange == 'Decentrex ' || exchange == 'Token store ') {
                         takerFee = new BigNumber(3000000000000000); //0.3% fee in wei
+                    } else if (exchange == 'Enclaves ') {
+                        let exchangeNum = Number(unpacked.events[6].value);
+
+                        //etherdelta proxy
+                        if (exchangeNum == 1) {
+                            takerFee = new BigNumber(3000000000000000); //0.3% fee in wei
+                        } else if (exchangeNum == 0) {
+                            //enclaves itself
+                            takerFee = new BigNumber(2000000000000000); //0.2% fee in wei
+                        }
                     }
 
                     let fee = new BigNumber(0);
@@ -4065,6 +4367,105 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
                     };
                     return obj;
                 }
+            }
+            //ethen.market
+            else if (unpacked.name == 'Order' && unpacked.events.length == 8 && unpacked.address == this.config.contractEthenAddr && unpacked.combinedEvents) {
+                var tradeType = 'Sell';
+                var token = this.setToken(unpacked.combinedEvents[2].value);
+                var base = this.setToken(this.config.ethAddr);
+                var maker = unpacked.events[0].value.toLowerCase();
+                var taker = unpacked.combinedEvents[0].value.toLowerCase();
+
+                // TODO unknown tokens
+
+                var buyUser = '';
+                var sellUser = '';
+
+                let tradeNum = Number(unpacked.combinedEvents[1].value);
+                if (tradeNum > 0) {
+                    tradeType = 'Buy';
+                    buyUser = taker;
+                    sellUser = maker;
+                } else {
+                    sellUser = taker;
+                    buyUser = maker;
+                }
+
+                var transType = 'Taker';
+                if (taker === myAddr)
+                    transType = 'Taker';
+                else if (maker === myAddr)
+                    transType = 'Maker';
+
+
+                var exchange = '';
+                let addrName = this.addressName(unpacked.address);
+
+                if (addrName.indexOf('0x') === -1) {
+                    exchange = addrName;
+                }
+
+
+                let amount = new BigNumber(unpacked.events[3].value);
+                let price = new BigNumber(unpacked.events[2].value);
+
+                var unlisted = token.unlisted;
+                var dvsr = this.divisorFromDecimals(token.decimals)
+                var dvsr2 = this.divisorFromDecimals(base.decimals)
+                var val = utility.weiToEth(amount, dvsr);
+
+                // price in 1e18
+                price = utility.weiToEth(price, dvsr2);
+                let dvsr3 = _delta.divisorFromDecimals(base.decimals - token.decimals)
+                price = utility.weiToEth(price, dvsr3);
+
+                val2 = val.times(price);
+
+                // history only??
+                if (buyUser === myAddr)
+                    tradeType = "Buy";
+                else if (sellUser === myAddr)
+                    tradeType = "Sell";
+
+
+                let takerFee = new BigNumber(1000000 * 2500);
+                let makerFee = new BigNumber(0);
+                const ether1 = new BigNumber(1000000000000000000); // 1 ether in wei
+
+
+                let fee = new BigNumber(unpacked.events[7].value);
+                let feeCurrency = base; //only ETH fees?
+
+                if (transType === 'Taker') {
+                    if (tradeType === 'Sell') {
+                        fee = utility.weiToEth(fee, dvsr);
+                    }
+                    else if (tradeType === 'Buy') {
+                        fee = utility.weiToEth(fee, dvsr2);
+                    }
+                } else if (transType === 'Maker') {
+                    fee = new BigNumber(0);
+                }
+
+                var obj = {
+                    'type': transType + ' ' + tradeType,
+                    'exchange': exchange,
+                    // myAddr works in tx.js , history doesn't show note anyway
+                    'note': utility.addressLink(myAddr, true, true) + ' selected an order in the orderbook to trade.',
+                    'token': token,
+                    'amount': val,
+                    'price': price,
+                    'base': base,
+                    'baseAmount': val2,
+                    'unlisted': unlisted,
+                    'buyer': buyUser,
+                    'seller': sellUser,
+                    'fee': fee,
+                    'feeCurrency': feeCurrency,
+                    'transType': transType,
+                    'tradeType': tradeType,
+                };
+                return obj;
             }
             //0x error
             else if (unpacked.name == 'LogError' && unpacked.events && unpacked.events.length == 2) {
@@ -4439,7 +4840,117 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
                     return obj;
                 }
             }
+            //Bancor trade
+            else if (unpacked.name == 'Conversion') {
+                //2 variants
+                //Conversion (index_topic_1 address _fromToken, index_topic_2 address _toToken, index_topic_3 address _trader, uint256 _amount, uint256 _return, uint256 _currentPriceN, uint256 _currentPriceD)
+                //Conversion (index_topic_1 address _fromToken, index_topic_2 address _toToken, index_topic_3 address _trader, uint256 _amount, uint256 _return, int256 _conversionFee, uint256 _currentPriceN, uint256 _currentPriceD)
+
+
+
+                //  let maker = unpacked.events[0].value.toLowerCase();
+                let taker = unpacked.events[2].value.toLowerCase();
+                let makerToken = this.setToken(unpacked.events[1].value);
+                let takerToken = this.setToken(unpacked.events[0].value);
+
+                let makerAmount = new BigNumber(unpacked.events[4].value);
+                let takerAmount = new BigNumber(unpacked.events[3].value);
+
+
+                var exchange = 'Bancor ';
+
+                var tradeType = 'Sell';
+                var token = undefined;
+                var base = undefined;
+
+                var transType = 'Taker';
+
+                if (makerToken.name === "???" && takerToken.name !== "???") {
+                    makerToken.name = "??? RelayBNT";
+                } else if (takerToken.name === "???" && makerToken.name !== "???") {
+                    takerToken.name = "??? RelayBNT";
+                }
+
+                if (utility.isWrappedETH(takerToken.addr) || (!utility.isWrappedETH(makerToken.addr) && makerToken.name === "BNT") || (smartRelays[takerToken.addr] || takerToken.name === "??? RelayBNT")) { // get eth  -> sell
+                    tradeType = 'Buy';
+                    token = makerToken;
+                    base = takerToken;
+                } else if (utility.isWrappedETH(makerToken.addr) || (!utility.isWrappedETH(takerToken.addr) && takerToken.name === "BNT") || (smartRelays[makerToken.addr] || makerToken.name === "??? RelayBNT")) { // buy
+                    tradeType = 'Sell';
+                    token = takerToken;
+                    base = makerToken;
+                } else {
+                    return { 'error': 'unknown token in trade event' };
+                    //  console.log('unknown base token');
+                    // return undefined;
+                }
+
+                if (token && base && token.addr && base.addr) {
+                    var amount = new BigNumber(0);
+                    var oppositeAmount = new BigNumber(0);
+                    var buyUser = '';
+                    var sellUser = '';
+                    if (tradeType === 'Sell') {
+                        amount = takerAmount;
+                        oppositeAmount = makerAmount;
+                        sellUser = taker;
+                        buyUser = maker;
+                    } else {
+                        oppositeAmount = takerAmount;
+                        amount = makerAmount;
+                        sellUser = maker;
+                        buyUser = taker;
+                    }
+
+                    var unlisted = token.unlisted;
+                    var dvsr = this.divisorFromDecimals(token.decimals)
+                    var dvsr2 = this.divisorFromDecimals(base.decimals)
+                    var val = utility.weiToEth(amount, dvsr);
+                    var val2 = utility.weiToEth(oppositeAmount, dvsr2);
+
+                    var price = new BigNumber(0);
+                    if (val.greaterThan(0)) {
+                        price = val2.div(val);
+                    }
+
+                    let fee = new BigNumber(0);
+                    let feeCurrency = '';
+
+                    //variant that includes fee
+                    if (unpacked.events.length == 8) {
+                        feeCurrency = makerToken;
+                        let rawFee = new BigNumber(unpacked.events[5].value);
+                        if (token == makerToken) {
+                            fee = utility.weiToEth(rawFee, dvsr);
+                        } else {
+                            fee = utility.weiToEth(rawFee, dvsr2);
+                        }
+                    }
+
+                    var obj = {
+                        'type': transType + ' ' + tradeType,
+                        'exchange': exchange,
+                        // myAddr works in tx.js , history doesn't show note anyway
+                        'note': utility.addressLink(myAddr, true, true) + ' made a Bancor conversion.',
+                        'token': token,
+                        'amount': val,
+                        'price': price,
+                        'base': base,
+                        'baseAmount': val2,
+                        'unlisted': unlisted,
+                        'buyer': buyUser,
+                        'seller': sellUser,
+                        'fee': fee,
+                        'feeCurrency': feeCurrency,
+                        'transType': transType,
+                        'tradeType': tradeType,
+                    };
+                    return obj;
+                }
+            }
+            //etherdelta/decentrex, idex, enclaves 
             else if (unpacked.events.length >= 4 && (unpacked.name == 'Deposit' || unpacked.name == 'Withdraw')) {
+
                 var type = unpacked.name;
                 var token = this.setToken(unpacked.events[0].value);
                 var user = unpacked.events[1].value;
@@ -4447,6 +4958,68 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
                 var rawBalance = unpacked.events[3].value;
                 var exchange = '';
                 let addrName = this.addressName(unpacked.address);
+
+                if (addrName.indexOf('0x') === -1) {
+                    exchange = addrName;
+                }
+
+                if (token && token.addr) {
+                    var unlisted = token.unlisted;
+                    var dvsr = this.divisorFromDecimals(token.decimals)
+                    var val = utility.weiToEth(rawAmount, dvsr);
+                    var balance = utility.weiToEth(rawBalance, dvsr);
+                    if (unpacked.name === 'Withdraw') {
+                        note = 'Withdrawn from the ';
+                    }
+                    else {
+                        note = 'Deposited into the ';
+                    }
+                    if (exchange) {
+                        note += exchange + 'contract';
+                    } else {
+                        note += 'exchange contract';
+                    }
+
+                    if (token.addr !== this.config.ethAddr)
+                        type = 'Token ' + type;
+                    var obj = {
+                        'type': type,
+                        'exchange': exchange,
+                        'note': note,
+                        'token': token,
+                        'amount': val,
+                        'balance': balance,
+                        'unlisted': unlisted,
+                    };
+                    return obj;
+                }
+            }
+            // ethen.market
+            else if (unpacked.name == 'DepositEther' || unpacked.name == 'WithdrawEther' || unpacked.name == 'WithdrawToken' || unpacked.name == 'DepositToken') {
+
+                var user = unpacked.events[0].value.toLowerCase();
+
+                var rawAmount = undefined;
+                var rawBalance = undefined;
+                var token = undefined;
+
+                var type = unpacked.name;
+
+                if (unpacked.name.indexOf('Ether') !== -1) {
+                    token = this.setToken(this.config.ethAddr);
+                    rawAmount = unpacked.events[1].value;
+                    rawBalance = unpacked.events[2].value;
+                    type = type.replace('Ether', '');
+                } else {
+                    token = this.setToken(unpacked.events[1].value);
+                    rawAmount = unpacked.events[2].value;
+                    rawBalance = unpacked.events[3].value;
+                    type = type.replace('Token', '');
+                }
+
+                var exchange = '';
+                let addrName = this.addressName(unpacked.address);
+
                 if (addrName.indexOf('0x') === -1) {
                     exchange = addrName;
                 }
@@ -4483,12 +5056,22 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
                 }
             }
             // ETH wrapping
-            else if (unpacked.events.length == 2 && (unpacked.name == 'Deposit' || unpacked.name == 'Withdrawal')) {
+            else if (
+                utility.isWrappedETH(unpacked.address.toLowerCase()) &&
+                (unpacked.events.length == 1 && (unpacked.name == 'Destruction' || unpacked.name == 'Issuance'))
+                || (unpacked.events.length == 2 && (unpacked.name == 'Deposit' || unpacked.name == 'Withdrawal'))
+            ) {
                 var type = '';
                 var token = this.setToken(unpacked.address);
                 var tokenETH = this.setToken(this.config.ethAddr);
-                var user = unpacked.events[0].value;
-                var rawAmount = unpacked.events[1].value;
+                var user = '';
+                var rawAmount = new BigNumber(0);
+                if (unpacked.events.length == 2) {
+                    user = unpacked.events[0].value;
+                    rawAmount = new BigNumber(unpacked.events[1].value);
+                } else {
+                    rawAmount = new BigNumber(unpacked.events[0].value);
+                }
 
                 if (token && token.addr) {
                     var unlisted = token.unlisted;
@@ -4496,8 +5079,8 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
                     var val = utility.weiToEth(rawAmount, dvsr);
                     var fromToken = undefined;
                     var toToken = undefined;
-                    if (unpacked.name === 'Withdrawal') {
-                        type = 'Unwrap WETH';
+                    if (unpacked.name === 'Withdrawal' || unpacked.name === 'Destruction') {
+                        type = 'Unwrap ETH';
                         note = 'Unwrap WETH back to ETH';
                         fromToken = token;
                         toToken = tokenETH;
@@ -4522,7 +5105,7 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
                     return obj;
                 }
             }
-            // kyber cancel
+            // etherdelta, decentrex, kyber, enclaves   cancel
             else if (unpacked.name == 'Cancel') {
                 var cancelType = 'sell';
                 var token = undefined;
@@ -4847,8 +5430,8 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
             }
             else if (unpacked.name == 'Transfer') {
 
-                var from = unpacked.events[0].value;
-                var to = unpacked.events[1].value;
+                var from = unpacked.events[0].value.toLowerCase();
+                var to = unpacked.events[1].value.toLowerCase();
                 var rawAmount = unpacked.events[2].value;
                 var token = this.setToken(unpacked.address);
 
@@ -4856,9 +5439,11 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
                 var val = utility.weiToEth(rawAmount, dvsr);
                 var unlisted = token.unlisted;
 
+                var note = 'Transferred ' + val.toString() + ' ' + token.name;
+
                 var obj = {
                     'type': 'Transfer',
-                    'note': 'Tokens transferred',
+                    'note': note,
                     'token': token,
                     'amount': val,
                     'from': from,
@@ -4868,8 +5453,8 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
                 return obj;
             }
             else if (unpacked.name == 'Approval') {
-                var sender = unpacked.events[0].value;
-                var to = unpacked.events[1].value;
+                var sender = unpacked.events[0].value.toLowerCase();
+                var to = unpacked.events[1].value.toLowerCase();
                 var rawAmount = unpacked.events[2].value;
                 var token = this.setToken(unpacked.address);
 
@@ -4879,8 +5464,14 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
 
                 var exchange = 'unknown ';
                 let addrName = this.addressName(to);
-                if (addrName !== to.toLowerCase()) {
+                if (addrName !== to) {
                     exchange = addrName;
+                } else {
+                    // bancor quick convert, sending out approves?
+                    addrName = this.addressName(sender);
+                    if (addrName !== sender) {
+                        exchange = addrName;
+                    }
                 }
 
                 var obj = {
@@ -4915,37 +5506,62 @@ DeltaBalances.prototype.startDeltaBalances = function startDeltaBalances(wait, c
     });
 };
 
-DeltaBalances.prototype.makePopoverContents = function (token) {
-    let contents = 'PlaceHolder';
-    try {
-        if (token && token.addr) {
-            if (!utility.isWrappedETH(token.addr)) {
-                if (!this.uniqueTokens[token.addr]) {
-                    contents = "Token unknown to DeltaBalances <br> Contract: " + utility.addressLink(token.addr, true, true);
-                } else {
-                    contents = 'Contract: ' + utility.addressLink(token.addr, true, true) + '<br> Decimals: ' + token.decimals;
-                }
-                contents += '<br> Trade on: <ul><li>' + utility.etherDeltaURL(token, true)
-                    + '</li><li>' + utility.forkDeltaURL(token, true)
-                    + '</li><li>' + utility.tokenStoreURL(token, true) + '</li>';
-                if (token.IDEX) {
-                    contents += '<li>' + utility.idexURL(token, true) + '</li>';
-                }
-                if (token.DDEX) {
-                    contents += '<li>' + utility.ddexURL(token, true) + '</li>';
-                }
-                contents += '</ul>';
+DeltaBalances.prototype.makeTokenPopover = function (token) {
 
-            } else if (token.addr == this.config.ethAddr) {
-                contents = "Ether (not a token)<br> Decimals: 18";
-            } else {
-                contents = 'Contract: ' + utility.addressLink(token.addr, true, true) + '<br> Decimals: ' + token.decimals + "<br>Wrapped Ether";
-            }
+    if (token) {
+        let title = token.name;
+        if (token.name2) {
+            title += ' - ' + token.name2;
         }
-    } catch (e) {
-        console.log('error making popover ' + e);
+
+        let labelClass = 'label-warning';
+        if (!token.unlisted)
+            labelClass = 'label-primary';
+
+        let contents = 'PlaceHolder';
+        try {
+            if (token && token.addr) {
+                if (!utility.isWrappedETH(token.addr)) {
+                    if (!this.uniqueTokens[token.addr]) {
+                        contents = "Token unknown to DeltaBalances <br> Contract: " + utility.addressLink(token.addr, true, true);
+                    } else {
+                        contents = 'Contract: ' + utility.addressLink(token.addr, true, true) + '<br> Decimals: ' + token.decimals;
+                    }
+                    if (token.locked) {
+                        contents += '<br> <i class="text-red fa fa-lock" aria-hidden="true"></i> Token Locked or Paused.';
+                    }
+                    contents += '<br> Trade on: <ul style="list-style-type: none;"><li>'
+                        + utility.binanceURL(token, true)
+                        + '</li><li>' + utility.etherDeltaURL(token, true)
+                        + '</li><li>' + utility.forkDeltaURL(token, true)
+                        + '</li><li>' + utility.tokenStoreURL(token, true)
+                        + '</li><li>' + utility.idexURL(token, true)
+                        + '</li><li>' + utility.ddexURL(token, true)
+                        + '</li></ul>';
+
+
+                } else if (token.addr == this.config.ethAddr) {
+                    contents = "Ether (not a token)<br> Decimals: 18";
+                } else {
+                    contents = 'Contract: ' + utility.addressLink(token.addr, true, true) + '<br> Decimals: ' + token.decimals + "<br>Wrapped Ether";
+                }
+            }
+        } catch (e) {
+            console.log('error making popover ' + e);
+        }
+
+        let name = token.name;
+        if (token.locked) {
+            name += ' <i class="fa fa-lock" aria-hidden="true"></i>';
+        }
+        let popover = '<a tabindex="0" class="label ' + labelClass + '" role="button" data-html="true" data-toggle="popover" data-placement="auto right"  title="' + title + '" data-container="body" data-content=\'' + contents + '\'>' + name + '</a>';
+
+        return popover;
+    } else {
+        console.log('undefined token in popover');
+        return "";
     }
-    return contents;
+
 };
 
 const deltaBalances = new DeltaBalances();
@@ -26808,17 +27424,8 @@ module.exports = (config) => {
   utility.processLogs = function (data) {
 
     if (!bundle.DeltaBalances.config.methodIDS) {
-      Decoder.addABI(bundle.DeltaBalances.config.etherDeltaAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.tokenAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.tokenStoreAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.idexAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.zeroxAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.oasisDexAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.airSwapAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.kyberAbi);
-      bundle.DeltaBalances.config.methodIDS = true;
+      this.initABIs();
     }
-
 
     if (data) {
       if (data.constructor !== Array) {
@@ -26826,7 +27433,7 @@ module.exports = (config) => {
 
         try {
           let result = Decoder.decodeLogs(data);
-          return result;
+          return combineEvents(result);
         } catch (error) {
           console.log('error in decodeLogs ' + error);
           return undefined;
@@ -26834,7 +27441,7 @@ module.exports = (config) => {
       } else {
         try {
           let result = Decoder.decodeLogs(data);
-          return result;
+          return combineEvents(result);
         } catch (error) {
           console.log('error in decodeLogs ' + error);
           return undefined;
@@ -26843,20 +27450,53 @@ module.exports = (config) => {
     } else {
       return undefined;
     }
+
+
+    //combine 2 trade events for Ethen.market trades
+    function combineEvents(decodedLogs) {
+      let combinedLogs = [];
+
+      for (let i = 0; i < decodedLogs.length; i++) {
+        let log = decodedLogs[i];
+        if (log) {
+
+          if (log.address !== _delta.config.contractEthenAddr) {
+            combinedLogs.push(log);
+          } else {
+            if (log.name === 'Order' && log.events.length == 8) {
+
+              let j = i + 1;
+              //given the 'order' event, look in the same tx for 'trade' events to match the data
+              while (j < decodedLogs.length && decodedLogs[j].hash === decodedLogs[i].hash) {
+                let log2 = decodedLogs[j];
+                if (log2 && log2.address === _delta.config.contractEthenAddr && log2.name === 'Trade') {
+                  log.combinedEvents = [log2.events[0], log2.events[2], log2.events[3]];
+                  break;
+                } else {
+                  j++;
+                }
+              }
+              if (log.combinedEvents) {
+                combinedLogs.push(log);
+              }
+            } else {
+              combinedLogs.push(log);
+            }
+          }
+
+
+        }
+      }
+
+      return combinedLogs;
+    }
+
   };
 
   utility.processInput = function (data) {
 
     if (!bundle.DeltaBalances.config.methodIDS) {
-      Decoder.addABI(bundle.DeltaBalances.config.etherDeltaAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.tokenAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.tokenStoreAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.idexAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.zeroxAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.oasisDexAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.airSwapAbi);
-      Decoder.addABI(bundle.DeltaBalances.config.kyberAbi);
-      bundle.DeltaBalances.config.methodIDS = true;
+      this.initABIs();
     }
 
     if (data) {
@@ -26872,47 +27512,75 @@ module.exports = (config) => {
     }
   };
 
+  utility.initABIs = function () {
+
+    Decoder.addABI(bundle.DeltaBalances.config.tokenAbi);
+    Decoder.addABI(bundle.DeltaBalances.config.token2Abi);
+    Decoder.addABI(bundle.DeltaBalances.config.tokenStoreAbi);
+    Decoder.addABI(bundle.DeltaBalances.config.idexAbi);
+    Decoder.addABI(bundle.DeltaBalances.config.zeroxAbi);
+    Decoder.addABI(bundle.DeltaBalances.config.oasisDexAbi);
+    Decoder.addABI(bundle.DeltaBalances.config.airSwapAbi);
+    Decoder.addABI(bundle.DeltaBalances.config.kyberAbi);
+    Decoder.addABI(bundle.DeltaBalances.config.bancorAbi);
+    Decoder.addABI(bundle.DeltaBalances.config.bancor2Abi);
+    Decoder.addABI(bundle.DeltaBalances.config.enclavesAbi);
+    Decoder.addABI(bundle.DeltaBalances.config.enclaves2Abi);
+    Decoder.addABI(bundle.DeltaBalances.config.ethenAbi);
+
+    //Decoder.addABI(bundle.DeltaBalances.config.dexyAbi);
+    //Decoder.addABI(bundle.DeltaBalances.config.dexy2Abi);
+
+    // etherdelta last to fix overloading
+    Decoder.addABI(bundle.DeltaBalances.config.etherDeltaAbi);
+
+    bundle.DeltaBalances.config.methodIDS = true;
+  }
+
 
   utility.etherDeltaURL = function (tokenObj, html) {
     if (tokenObj) {
       var url = "https://etherdelta.com/#";
-      if (tokenObj.unlisted || !tokenObj.EtherDelta) {
+      var labelClass = "label-warning";
+      if (!tokenObj.EtherDelta) {
         url += tokenObj.addr + "-ETH";
       } else {
-        url += tokenObj.name + "-ETH";
+        url += tokenObj.EtherDelta + "-ETH";
+        labelClass = 'label-primary';
       }
     } else {
       url = '';
     }
 
     if (html) {
-      url = '<a href="' + url + '" target="_blank"> EtherDelta</a>';
+      url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">EtherDelta <i class="fa fa-external-link" aria-hidden="true"></i></a>';
     }
     return url;
   }
 
   utility.forkDeltaURL = function (tokenObj, html) {
     var url = "https://forkdelta.github.io/#!/trade/";
-
+    var labelClass = "label-warning";
     if (tokenObj) {
-      if (tokenObj.unlisted || !tokenObj.ForkDelta) {
+      if (!tokenObj.ForkDelta) {
         url += tokenObj.addr + "-ETH";
       } else {
-        url += tokenObj.name + "-ETH";
+        url += tokenObj.ForkDelta + "-ETH";
+        labelClass = 'label-primary';
       }
     } else {
       url = '';
     }
 
     if (html) {
-      url = '<a href="' + url + '" target="_blank"> ForkDelta</a>';
+      url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">ForkDelta <i class="fa fa-external-link" aria-hidden="true"></i></a>';
     }
     return url;
   }
 
   utility.tokenStoreURL = function (tokenObj, html) {
     var url = "https://token.store/trade/";
-
+    var labelClass = "label-warning";
     if (tokenObj) {
       url += tokenObj.addr;
     } else {
@@ -26920,44 +27588,71 @@ module.exports = (config) => {
     }
 
     if (html) {
-      url = '<a href="' + url + '" target="_blank"> Token store</a>';
+      url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">Token store <i class="fa fa-external-link" aria-hidden="true"></i></a>';
     }
     return url;
   }
 
   utility.idexURL = function (tokenObj, html) {
     var url = "https://idex.market/eth/"
+    var labelClass = "label-primary";
 
-    if (tokenObj) {
-      if (tokenObj.IDEXname)
-        url += tokenObj.IDEXname;
-      else
-        url += tokenObj.name;
+    if (tokenObj && tokenObj.IDEX) {
+      url += tokenObj.IDEX;
     } else {
       url = '';
+      labelClass = 'label-default';
     }
 
     if (html) {
-      url = '<a href="' + url + '" target="_blank"> IDEX</a>';
+      if (url == '') {
+        url = '<span class="label ' + labelClass + '">IDEX</span>';
+      } else {
+        url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">IDEX <i class="fa fa-external-link" aria-hidden="true"></i></a>';
+      }
     }
     return url;
   }
 
   utility.ddexURL = function (tokenObj, html) {
     var url = "https://ddex.io/trade/";
+    var labelClass = "label-primary";
 
-    if (tokenObj) {
-      if (tokenObj.DDEXname)
-        url += tokenObj.DDEXname;
-      else
-        url += tokenObj.name;
+    if (tokenObj && tokenObj.DDEX) {
+      url += tokenObj.DDEX + '-ETH';
     } else {
+      labelClass = 'label-default';
       url = '';
     }
-    if (url)
-      url += '-ETH';
+
     if (html) {
-      url = '<a href="' + url + '" target="_blank"> DDEX</a>';
+      if (url == '') {
+        url = '<span class="label ' + labelClass + '">DDEX</span>';
+      } else {
+        url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">DDEX <i class="fa fa-external-link" aria-hidden="true"></i></a>';
+      }
+    }
+    return url;
+  }
+
+  utility.binanceURL = function (tokenObj, html) {
+    var url = "https://www.binance.com/trade.html?ref=10985752&symbol=";
+    var labelClass = "label-primary";
+
+    if (tokenObj && tokenObj.Binance && tokenObj.Binance.indexOf('ETH') !== -1) {
+      let name = tokenObj.Binance.replace("ETH", "_ETH");
+      url += name;
+    } else {
+      labelClass = 'label-default';
+      url = '';
+    }
+
+    if (html) {
+      if (url == '') {
+        url = '<span class="label ' + labelClass + '">Binance</span>';
+      } else {
+        url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">Binance <i class="fa fa-external-link" aria-hidden="true"></i></a>';
+      }
     }
     return url;
   }
