@@ -64,6 +64,12 @@
 				displayed: 0,
 				contract: _delta.config.contractDexyAddr
 			},
+			'SingularX': {
+				enabled: false,
+				loaded: 0,
+				displayed: 0,
+				contract: _delta.config.contractSingularxAddr
+			},
 		};
 
 
@@ -115,6 +121,7 @@
 				Decentrex: 0,
 				Ethen: 0,
 				DEXY: 0,
+				SingularX: 0,
 				Total: 0,
 				Unlisted: false,
 				Address: '0x0000000000000000000000000000000000000000',
@@ -689,6 +696,7 @@
 				Decentrex: 0,
 				Ethen: 0,
 				DEXY: 0,
+				Singularx: 0,
 				Total: 0,
 				Bid: '',
 				Ask: '',
@@ -1509,7 +1517,7 @@
 				if (cellValue == null) cellValue = "";
 				var head = columns[colIndex];
 
-				if (head == 'Total' || head == 'EtherDelta' || head == 'Decentrex' || head == 'Token store' || head == 'IDEX' || head == 'Enclaves' || head == 'DEXY' || head == 'Ethen' || head == 'Wallet' || head == 'Bid' || head == 'Ask' || head == 'Est. ETH') {
+				if (head == 'Total' || head == 'EtherDelta' || head == 'Singularx' || head == 'Decentrex' || head == 'Token store' || head == 'IDEX' || head == 'Enclaves' || head == 'DEXY' || head == 'Ethen' || head == 'Wallet' || head == 'Bid' || head == 'Ask' || head == 'Est. ETH') {
 					if (cellValue !== "" && cellValue !== undefined) {
 						var dec = fixedDecimals;
 						if (head == 'Bid' || head == 'Ask') {
@@ -1549,7 +1557,7 @@
 		});
 	}
 
-	var balanceHeaders = { 'Name': 1, 'Wallet': 1, 'EtherDelta': 1, 'IDEX': 1, 'Token store': 1, 'Enclaves': 1, 'Decentrex': 1, 'DEXY': 1, 'Ethen': 1, 'Total': 1, 'Value': 1, 'Bid': 1, 'Ask': 0, 'Est. ETH': 1, 'USD': 0, 'EUR': 0 };
+	var balanceHeaders = { 'Name': 1, 'Wallet': 1, 'EtherDelta': 1, 'IDEX': 1, 'Token store': 1, 'Enclaves': 1, 'Decentrex': 1, 'DEXY': 1, 'Ethen': 1, 'Singularx': 1, 'Total': 1, 'Value': 1, 'Bid': 1, 'Ask': 0, 'Est. ETH': 1, 'USD': 0, 'EUR': 0 };
 
 	// Adds a header row to the table and returns the set of columns.
 	// Need to do union of keys from all records as some records may not contain
@@ -1664,7 +1672,7 @@
 
 				for (let j = 0; j < arr.length; j++) {
 					//remove exponential notation
-					if (A[0][j] == 'Wallet' || A[0][j] == 'EtherDelta' || A[0][j] == 'IDEX' || A[0][j] == 'Token store' || A[0][j] == 'Enclaves' || A[0][j] == 'Decentrex' || A[0][j] == 'DEXY' || A[0][j] == 'Ethen' || A[0][j] == 'Total' || A[0][j] == 'Estimated value (ETH)' || A[0][j] == 'Bid (ETH)' || A[0][j] == 'Ask (ETH)') {
+					if (A[0][j] == 'Wallet' || A[0][j] == 'EtherDelta' || A[0][j] == 'Singularx' || A[0][j] == 'IDEX' || A[0][j] == 'Token store' || A[0][j] == 'Enclaves' || A[0][j] == 'Decentrex' || A[0][j] == 'DEXY' || A[0][j] == 'Ethen' || A[0][j] == 'Total' || A[0][j] == 'Estimated value (ETH)' || A[0][j] == 'Bid (ETH)' || A[0][j] == 'Ask (ETH)') {
 						if (arr[j] != '' && arr[j] != ' ')
 							arr[j] = _util.exportNotation(arr[j]);
 					}
