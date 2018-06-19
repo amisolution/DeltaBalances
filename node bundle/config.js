@@ -11,6 +11,7 @@ module.exports = {
     { addr: '0x2136bbba2edca21afdddee838fff19ea70d10f03' },
     { addr: '0xc6b330df38d6ef288c953f1f2835723531073ce2' },
   ],
+  contractSingularxAddr: '0x9a2d163aB40F88C625Fd475e807Bbc3556566f80',
   contractTokenStoreAddr: '0x1ce7ae555139c5ef5a57cc8d814a867ee6ee33d8',
   contractIdexAddr: '0x2a0c0dbecc7e4d658f48e01e3fa353f44050c208',
   contractDecentrexAddr: '0xbf29685856fae1e228878dfb35b280c0adcc3b05',
@@ -119,6 +120,7 @@ module.exports = {
       'contractKyberAddr',
       'contractEnclavesAddr',
       'contractEthenAddr',
+      'contractSingularxAddr',
     ],
     minBlock: 3154197,
     maxBlock: undefined,
@@ -132,6 +134,7 @@ module.exports = {
       '0x7b6c917cd708d6f749ab415a0f1aa5ced6110d03141d28e5b75e216ecb4e79f7', //enclaves
       '0x165223f17116d321e4ef371cbdb122aa350ce59db46ff8f575874758c14a3ef0', // Ethen 1/2 'Order'
       '0xee7e85974085b8a74acdea8330a9e8c09680dccea6f6df360491edf22a27cc3b', // Ethen 2/2 'Trade'
+      '0x01984e2ea4cfdd7de33a6e6d6fba04d79d4f5395422eab492456c0d723fce113', // SingularX 'Trade'
     ],
     withdrawTopic: undefined,
     depositTopic: undefined,
@@ -247,6 +250,16 @@ module.exports = {
     createTx: '0x9fc7d3e77c02fb00c537640114369ec5f1fbf748ac69a819c2d6dddbf08279b1',
     userIndexed: false
   },
+  historySingularx: {
+    exchange: 'Singularx',
+    exchangeAddr: 'contractSingularxAddr',
+    minBlock: 4505692,
+    maxBlock: undefined,
+    tradeTopic: '0x01984e2ea4cfdd7de33a6e6d6fba04d79d4f5395422eab492456c0d723fce113',
+    withdrawTopic: '0xfcd13916a6a4e391d6c9cc4161bf486e5e4d8acd142ab5949b293f54f0fa3baa',
+    depositTopic: '0xe50eecf3513fe38b1d98369965bdf91d1f405359cfc85500d36150075b1f2c12',
+    createTx: '0xc10fc67499a037b6c2f14ae0c63b659b05bd7b553378202f96e777dd4843130f',
+    userIndexed: false
   wrappedETH: {
     "0x0000000000000000000000000000000000000000": 1, // EtherDelta, IDEX, tokenStore, Decentrex  reserved for ETH
     "0xe495bcacaf29a0eb00fb67b86e9cd2a994dd55d8": 1, // 0x style ?, deprecated
