@@ -22,7 +22,6 @@ module.exports = {
     '0xeb71bad396acaa128aeadbc7dbd59ca32263de01': "IDT",
     '0x173a2467cece1f752eb8416e337d0f0b58cad795': 'Erc Dex',
     '0xe269e891a2ec8585a378882ffa531141205e92e9': 'DDEX',
-    '0x0000000000000000000000000000000000000000': 'Paradex',
     '0x6f7ae872e995f98fcd2a7d3ba17b7ddfb884305f': 'Tokenlon',
     '0x55890b06f0877a01bb5349d93b202961f8e27a9b': 'Shark Relay',
     '0x5e150a33ffa97a8d22f59c77ae5487b089ef62e9': 'TokenJar',
@@ -49,7 +48,7 @@ module.exports = {
 
   ethAddr: '0x0000000000000000000000000000000000000000',
   apiServer: '',
-  apiServers: ['https://api.etherdelta.com', /*'https://api.forkdelta.com', 'https://cache.etherdelta.com', 'https://cache1.etherdelta.com', 'https://cache2.etherdelta.com', 'https://cache3.etherdelta.com'*/],
+  apiServers: ['https://api.forkdelta.com', /*'https://api.forkdelta.com', 'https://cache.etherdelta.com', 'https://cache1.etherdelta.com', 'https://cache2.etherdelta.com', 'https://cache3.etherdelta.com'*/],
   etherscanAPIKey: 'YHBUWV6P5B5ITKMI91JIRZZYBP1CG1V65R',
   infuraURL: 'https://mainnet.infura.io/DeltaBalances',
   web3URLs: {
@@ -260,6 +259,7 @@ module.exports = {
     depositTopic: '0xe50eecf3513fe38b1d98369965bdf91d1f405359cfc85500d36150075b1f2c12',
     createTx: '0xc10fc67499a037b6c2f14ae0c63b659b05bd7b553378202f96e777dd4843130f',
     userIndexed: false
+  },
   wrappedETH: {
     "0x0000000000000000000000000000000000000000": 1, // EtherDelta, IDEX, tokenStore, Decentrex  reserved for ETH
     "0xe495bcacaf29a0eb00fb67b86e9cd2a994dd55d8": 1, // 0x style ?, deprecated
