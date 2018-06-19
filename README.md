@@ -18,6 +18,8 @@ DeltaBalances is not affiliated with any of the exchanges mentioned below.
 + [Bancor](https://bancor.network) (No trade history)
 + [Enclaves Dex](https://enclaves.io)
 + [ETHEN](https://ethen.market) (No balances yet)
++ [SingularX](https://ex.singularx.com)
+
 
 0x Project Relayers, including:
 + [DDEX](https://ddex.io/)
@@ -29,6 +31,8 @@ DeltaBalances is not affiliated with any of the exchanges mentioned below.
 + [IDT](https://idtexchange.com)
 + [Bamboo Relay](https://bamboorelay.com)
 + [Tokenlon](https://tokenlon.token.im/tokenlon)
++ [INSTEX](https://app.instex.io)
++ [Angel0x](https://angel0x.com)
 
 
 # Smart contract
