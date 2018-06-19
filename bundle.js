@@ -4151,6 +4151,9 @@ DeltaBalances.prototype.addressName = function (addr, showAddr) {
     else if (lcAddr == this.config.contractEthenAddr) {
         return 'ETHEN ' + (showAddr ? lcAddr : '');
     }
+    else if (lcAddr == this.config.contractSingularxAddr) {
+        return 'Singularx ' + (showAddr ? lcAddr : '');
+    }
     else if (lcAddr == this.config.contractDecentrexAddr) {
         return 'Decentrex ' + (showAddr ? lcAddr : '');
     } else if (lcAddr == this.config.idexAdminAddr) {
@@ -4205,6 +4208,7 @@ DeltaBalances.prototype.isExchangeAddress = function (addr) {
         //    || lcAddr === this.config.contractDexyAddr
         //    || lcAddr === this.config.contractDexy2Addr
         || lcAddr === this.config.contractEthenAddr
+	|| lcAddr === this.config.contractSingularxAddr
     ) {
         return true;
     } else {
@@ -4302,7 +4306,7 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
                     let makerFee = new BigNumber(0);
                     const ether1 = new BigNumber(1000000000000000000); // 1 ether in wei
 
-                    if (exchange == 'EtherDelta ' || exchange == 'Decentrex ' || exchange == 'Token store ') {
+                    if (exchange == 'EtherDelta ' || exchange == 'Singularx ' || exchange == 'Decentrex ' || exchange == 'Token store ') {
                         takerFee = new BigNumber(3000000000000000); //0.3% fee in wei
                     } else if (exchange == 'Enclaves ') {
                         let exchangeNum = Number(unpacked.events[6].value);
@@ -27527,7 +27531,8 @@ module.exports = (config) => {
     Decoder.addABI(bundle.DeltaBalances.config.enclavesAbi);
     Decoder.addABI(bundle.DeltaBalances.config.enclaves2Abi);
     Decoder.addABI(bundle.DeltaBalances.config.ethenAbi);
-
+	  
+    //Decoder.addABI(bundle.DeltaBalances.config.singularxAbi);
     //Decoder.addABI(bundle.DeltaBalances.config.dexyAbi);
     //Decoder.addABI(bundle.DeltaBalances.config.dexy2Abi);
 
@@ -27589,6 +27594,26 @@ module.exports = (config) => {
 
     if (html) {
       url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">Token store <i class="fa fa-external-link" aria-hidden="true"></i></a>';
+    }
+    return url;
+  }
+	
+  utility.tokenStoreURL = function (tokenObj, html) {
+    var url = "https://ex.singularx.com/exchange/";
+    var labelClass = "label-warning";
+    if (tokenObj) {
+      if (!tokenObj.SingularX) {
+        url += tokenObj.addr + "/ETH";
+      } else {
+        url += tokenObj.SingularX + "/ETH";
+        labelClass = 'label-primary';
+      }
+     } else {
+      url = '';
+    }
+
+    if (html) {
+      url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">SingularX <i class="fa fa-external-link" aria-hidden="true"></i></a>';
     }
     return url;
   }
