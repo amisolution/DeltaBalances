@@ -1,5 +1,5 @@
 module.exports = {
-  homeURL: 'https://deltabalances.github.io',
+  homeURL: 'https://amisolution.github.io/deltabalances',
   socketURL: 'https://api.forkdelta.com', //'https://socket.etherdelta.com';
 
   contractDeltaBalanceAddr: '0x3E25F0BA291F202188Ae9Bda3004A7B3a803599a',
@@ -48,7 +48,7 @@ module.exports = {
 
   ethAddr: '0x0000000000000000000000000000000000000000',
   apiServer: '',
-  apiServers: ['https://api.forkdelta.com', /*'https://api.forkdelta.com', 'https://cache.etherdelta.com', 'https://cache1.etherdelta.com', 'https://cache2.etherdelta.com', 'https://cache3.etherdelta.com'*/],
+  apiServers: ['https://api.etherdelta.com', /*'https://api.forkdelta.com', 'https://cache.etherdelta.com', 'https://cache1.etherdelta.com', 'https://cache2.etherdelta.com', 'https://cache3.etherdelta.com'*/],
   etherscanAPIKey: 'YHBUWV6P5B5ITKMI91JIRZZYBP1CG1V65R',
   infuraURL: 'https://mainnet.infura.io/DeltaBalances',
   web3URLs: {
