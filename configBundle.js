@@ -12,6 +12,8 @@ module.exports = {
     { addr: '0x2136bbba2edca21afdddee838fff19ea70d10f03' },
     { addr: '0xc6b330df38d6ef288c953f1f2835723531073ce2' },
   ],
+  contractEthercAddr: '0xd8d48e52f39ab2d169c8b562c53589e6c71ac4d3',
+  contractSingularxAddr: '0x9a2d163aB40F88C625Fd475e807Bbc3556566f80',
   contractTokenStoreAddr: '0x1ce7ae555139c5ef5a57cc8d814a867ee6ee33d8',
   contractIdexAddr: '0x2a0c0dbecc7e4d658f48e01e3fa353f44050c208',
   contractDecentrexAddr: '0xbf29685856fae1e228878dfb35b280c0adcc3b05',
@@ -120,6 +122,8 @@ module.exports = {
       'contractKyberAddr',
       'contractEnclavesAddr',
       'contractEthenAddr',
+      'contractSingularxAddr',
+      'contractEthercAddr',
     ],
     minBlock: 3154197,
     maxBlock: undefined,
@@ -133,6 +137,8 @@ module.exports = {
       '0x7b6c917cd708d6f749ab415a0f1aa5ced6110d03141d28e5b75e216ecb4e79f7', //enclaves
       '0x165223f17116d321e4ef371cbdb122aa350ce59db46ff8f575874758c14a3ef0', // Ethen 1/2 'Order'
       '0xee7e85974085b8a74acdea8330a9e8c09680dccea6f6df360491edf22a27cc3b', // Ethen 2/2 'Trade'
+      '0x01984e2ea4cfdd7de33a6e6d6fba04d79d4f5395422eab492456c0d723fce113', // SingularX 'Trade'
+      '0x8ad26c53f106e07421ea1f563dc0d80700f155c55395cff69b7d42b994732ca1', // etherc.io 'Trade'
     ],
     withdrawTopic: undefined,
     depositTopic: undefined,
@@ -246,6 +252,28 @@ module.exports = {
     depositTopic: ['0xbb01c612a93e37305a5f1f7b8ed63ea61211be444f722915b9dc827c0bdbffcc','0x20d6bac8359f33d79581bfd2b0457cb189fda6d90fed287ddc9f2ba3eb124b67'],
     showRelayers: false,
     createTx: '0x9fc7d3e77c02fb00c537640114369ec5f1fbf748ac69a819c2d6dddbf08279b1',
+    userIndexed: false
+  },
+  historySingularx: {
+    exchange: 'Singularx',
+    exchangeAddr: 'contractSingularxAddr',
+    minBlock: 4505692,
+    maxBlock: undefined,
+    tradeTopic: '0x01984e2ea4cfdd7de33a6e6d6fba04d79d4f5395422eab492456c0d723fce113',
+    withdrawTopic: '0xfcd13916a6a4e391d6c9cc4161bf486e5e4d8acd142ab5949b293f54f0fa3baa',
+    depositTopic: '0xe50eecf3513fe38b1d98369965bdf91d1f405359cfc85500d36150075b1f2c12',
+    createTx: '0xc10fc67499a037b6c2f14ae0c63b659b05bd7b553378202f96e777dd4843130f',
+    userIndexed: false
+  },
+  historyEtherc: {
+    exchange: 'etherc',
+    exchangeAddr: 'contractEthercAddr',
+    minBlock: 	5474977,
+    maxBlock: undefined,
+    tradeTopic: '0x8ad26c53f106e07421ea1f563dc0d80700f155c55395cff69b7d42b994732ca1',
+    withdrawTopic: '0x9b96cf3bfaeb72f97c631007b636879efe14ff1cc5ddee4ea0129c8aa4b0d74f',
+    depositTopic: '0x9f9f691a5a22743fa32c215f9c7e8281a41f454168d0e73cdfee1889f5198154',
+    createTx: undefined,
     userIndexed: false
   },
   wrappedETH: {
