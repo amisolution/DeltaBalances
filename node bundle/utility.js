@@ -394,7 +394,7 @@ module.exports = (config) => {
     return url;
 }
   
-  utility.ethenURL = function (tokenObj, html) {
+  utility.ethercURL = function (tokenObj, html) {
     if (tokenObj) {
       var url = "https://etherc.io/";
       var labelClass = "label-warning";
