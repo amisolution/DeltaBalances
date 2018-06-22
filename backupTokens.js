@@ -292,7 +292,7 @@ let offlineCustomTokens = [
   {symbol:"AMB",address:"0x4dc3643dbc642b72c158e7f3d2ff232df61cb6ce",decimal:18,name:"Amber Token",Binance:"AMBETH",EtherDelta:"AMB",ForkDelta:"AMB",IDEX:"AMB"},
   {symbol:"AMC",address:"0x71d0495f43e65a08953022ccac33dd9ff193932b",decimal:18,name:"AMCHART"},
   {symbol:"AMD",address:"0x78fc55d0b12a59539adb8afe4540ab411e2acb6e",decimal:4,name:"Advanced Money Dispenser"},
-  {symbol:"AMIS",address:"0x949bed886c739f1a3273629b3320db0c5024c719",decimal:9,name:"AMIS",EtherDelta:"AMIS",ForkDelta:"AMIS",IDEX:"AMIS",Tokenjar:"AMIS",Bamboorelay:"AMIS",Instex:"AMIS",Singularx:"AMIS"},
+  {symbol:"AMIS",address:"0x949bed886c739f1a3273629b3320db0c5024c719",decimal:9,name:"AMIS",EtherDelta:"AMIS",ForkDelta:"AMIS",IDEX:"AMIS",TokenJar:"AMIS",BambooRelay:"AMIS",Instex:"AMIS",Singularx:"AMIS"},
   {symbol:"AMLT",address:"0xca0e7269600d353f70b14ad118a49575455c0f2f",decimal:18,EtherDelta:"AMLT"},
   {symbol:"AMM",address:"0x8b1f49491477e0fb46a29fef53f1ea320d13c349",decimal:6,name:"MicroMoney",EtherDelta:"AMM",ForkDelta:"AMM",IDEX:"AMM"},
   {symbol:"AMN",address:"0x737f98ac8ca59f2c68ad658e3c3d8c8963e40a4c",decimal:18,name:"Amon",IDEX:"AMN"},
