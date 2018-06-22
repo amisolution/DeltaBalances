@@ -4154,6 +4154,9 @@ DeltaBalances.prototype.addressName = function (addr, showAddr) {
     else if (lcAddr == this.config.contractSingularxAddr) {
         return 'Singularx ' + (showAddr ? lcAddr : '');
     }
+    else if (lcAddr == this.config.contractEthercAddr) {
+        return 'Singularx ' + (showAddr ? lcAddr : '');
+    }
     else if (lcAddr == this.config.contractDecentrexAddr) {
         return 'Decentrex ' + (showAddr ? lcAddr : '');
     } else if (lcAddr == this.config.idexAdminAddr) {
@@ -4209,6 +4212,7 @@ DeltaBalances.prototype.isExchangeAddress = function (addr) {
         //    || lcAddr === this.config.contractDexy2Addr
         || lcAddr === this.config.contractEthenAddr
 	|| lcAddr === this.config.contractSingularxAddr
+        || lcAddr === this.config.contractEthercAddr
     ) {
         return true;
     } else {
@@ -27598,7 +27602,7 @@ module.exports = (config) => {
     return url;
   }
 	
-  utility.tokenStoreURL = function (tokenObj, html) {
+  utility.SingularxURL = function (tokenObj, html) {
     var url = "https://ex.singularx.com/exchange/";
     var labelClass = "label-warning";
     if (tokenObj) {
@@ -27614,6 +27618,26 @@ module.exports = (config) => {
 
     if (html) {
       url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">SingularX <i class="fa fa-external-link" aria-hidden="true"></i></a>';
+    }
+    return url;
+  }
+	
+  utility.EthercURL = function (tokenObj, html) {
+    var url = "https://etherc.io/#";
+    var labelClass = "label-warning";
+    if (tokenObj) {
+      if (!tokenObj.Etherc) {
+        url += tokenObj.addr + "-ETH";
+      } else {
+        url += tokenObj.Etherc + "-ETH";
+        labelClass = 'label-primary';
+      }
+     } else {
+      url = '';
+    }
+
+    if (html) {
+      url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">Etherc <i class="fa fa-external-link" aria-hidden="true"></i></a>';
     }
     return url;
   }
