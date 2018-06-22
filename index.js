@@ -704,7 +704,6 @@
 				Ethen: 0,
 				DEXY: 0,
 				Singularx: 0,
-				Ethen: 0,
 				Etherc: 0,
 				Total: 0,
 				Bid: '',
