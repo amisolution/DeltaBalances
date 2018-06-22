@@ -121,6 +121,7 @@ module.exports = {
       'contractEnclavesAddr',
       'contractEthenAddr',
       'contractSingularxAddr',
+      'contractEthercAddr',
     ],
     minBlock: 3154197,
     maxBlock: undefined,
@@ -270,7 +271,7 @@ module.exports = {
     tradeTopic: '0x8ad26c53f106e07421ea1f563dc0d80700f155c55395cff69b7d42b994732ca1',
     withdrawTopic: '0x9b96cf3bfaeb72f97c631007b636879efe14ff1cc5ddee4ea0129c8aa4b0d74f',
     depositTopic: '0x9f9f691a5a22743fa32c215f9c7e8281a41f454168d0e73cdfee1889f5198154',
-    createTx: undefined
+    createTx: undefined,
     userIndexed: false
   },
   wrappedETH: {
