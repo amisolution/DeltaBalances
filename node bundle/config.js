@@ -158,7 +158,7 @@ module.exports = {
     exchange: 'Decentrex',
     exchangeAddr: 'contractDecentrexAddr',
     minBlock: 3767902,
-    maxBlock: 4832686,
+    maxBlock: undefined,
     tradeTopic: '0x6effdda786735d5033bfad5f53e5131abcced9e52be6c507b62d639685fbed6d',
     withdrawTopic: '0xf341246adaac6f497bc2a656f546ab9e182111d630394f0c57c710a59a2cb567',
     depositTopic: '0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7',
