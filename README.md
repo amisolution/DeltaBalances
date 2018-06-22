@@ -19,6 +19,7 @@ DeltaBalances is not affiliated with any of the exchanges mentioned below.
 + [Enclaves Dex](https://enclaves.io)
 + [ETHEN](https://ethen.market) (No balances yet)
 + [SingularX](https://ex.singularx.com)
++ [Etherc](https://etherc.io)
 
 
 0x Project Relayers, including:
