@@ -393,6 +393,23 @@ module.exports = (config) => {
     }
     return url;
 }
+  
+  utility.ethenURL = function (tokenObj, html) {
+    if (tokenObj) {
+      var url = "https://etherc.io/";
+      var labelClass = "label-warning";
+    if (tokenObj) {
+      url += tokenObj.addr;
+    } else {
+      url = '';
+    }
+
+    if (html) {
+      url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">Etherc <i class="fa fa-external-link" aria-hidden="true"></i></a>';
+    }
+    return url;
+}
+
 
   utility.hashLink = function (hash, html, short) {
     var url = 'https://etherscan.io/tx/' + hash;
