@@ -2598,7 +2598,7 @@ DeltaBalances.prototype.initTokens = function (useBlacklist) {
                 token.locked = true;
             }
 
-            let listedExchanges = ['EtherDelta', 'ForkDelta', 'IDEX', 'DDEX', 'Binance'];
+            let listedExchanges = ['EtherDelta', 'ForkDelta', 'IDEX', 'DDEX', 'Binance', 'ETHEN', 'TokenJar', 'BambooRelay', 'SingularX'];
             for (let i = 0; i < listedExchanges.length; i++) {
                 let exchange = listedExchanges[i];
                 if (x[exchange]) {
@@ -5545,6 +5545,11 @@ DeltaBalances.prototype.makeTokenPopover = function (token) {
                         + '</li><li>' + utility.tokenStoreURL(token, true)
                         + '</li><li>' + utility.idexURL(token, true)
                         + '</li><li>' + utility.ddexURL(token, true)
+			+ '</li><li>' + utility.tokenjarURL(token, true)
+			+ '</li><li>' + utility.bamboorelayURL(token, true)
+			+ '</li><li>' + utility.ethenURL(token, true)
+			+ '</li><li>' + utility.singularxURL(token, true)
+			+ '</li><li>' + utility.ethercURL(token, true)
                         + '</li></ul>';
 
 
@@ -27602,7 +27607,7 @@ module.exports = (config) => {
     return url;
   }
 	
-  utility.SingularxURL = function (tokenObj, html) {
+  utility.singularxURL = function (tokenObj, html) {
     var url = "https://ex.singularx.com/exchange/";
     var labelClass = "label-warning";
     if (tokenObj) {
@@ -27610,7 +27615,7 @@ module.exports = (config) => {
         url += tokenObj.addr + "/ETH";
       } else {
         url += tokenObj.SingularX + "/ETH";
-        labelClass = 'label-primary';
+        labelClass = 'label-default';
       }
      } else {
       url = '';
@@ -27622,7 +27627,7 @@ module.exports = (config) => {
     return url;
   }
 	
-  utility.EthercURL = function (tokenObj, html) {
+  utility.ethercURL = function (tokenObj, html) {
     var url = "https://etherc.io/#";
     var labelClass = "label-warning";
     if (tokenObj) {
@@ -27630,7 +27635,7 @@ module.exports = (config) => {
         url += tokenObj.addr + "-ETH";
       } else {
         url += tokenObj.Etherc + "-ETH";
-        labelClass = 'label-primary';
+        labelClass = 'label-default';
       }
      } else {
       url = '';
@@ -27683,7 +27688,49 @@ module.exports = (config) => {
     }
     return url;
   }
+	
+  utility.tokenjarURL = function (tokenObj, html) {
+    var url = "https://tokenjar.io/";
+    var labelClass = "label-primary";
 
+    if (tokenObj && tokenObj.TokenJar) {
+      url += tokenObj.TokenJar;
+    } else {
+      labelClass = 'label-default';
+      url = '';
+    }
+
+    if (html) {
+      if (url == '') {
+        url = '<span class="label ' + labelClass + '">TokenJar</span>';
+      } else {
+        url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">TokenJar <i class="fa fa-external-link" aria-hidden="true"></i></a>';
+      }
+    }
+    return url;
+  }
+  
+  utility.bamboorelayURL = function (tokenObj, html) {
+    var url = "https://bamboorelay.com/trade";
+    var labelClass = "label-primary";
+
+    if (tokenObj && tokenObj.BambooRelay) {
+      url += tokenObj.BambooRelay + '-WETH';
+    } else {
+      labelClass = 'label-default';
+      url = '';
+    }
+
+    if (html) {
+      if (url == '') {
+        url = '<span class="label ' + labelClass + '">Bamboo Relay</span>';
+      } else {
+        url = '<a class="label ' + labelClass + '" href="' + url + '" target="_blank">Bamboo Relay <i class="fa fa-external-link" aria-hidden="true"></i></a>';
+      }
+    }
+    return url;
+  }
+  
   utility.binanceURL = function (tokenObj, html) {
     var url = "https://www.binance.com/trade.html?ref=10985752&symbol=";
     var labelClass = "label-primary";
