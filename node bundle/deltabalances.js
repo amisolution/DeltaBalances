@@ -276,7 +276,7 @@ DeltaBalances.prototype.initTokens = function (useBlacklist) {
                 token.locked = true;
             }
 
-            let listedExchanges = ['EtherDelta', 'ForkDelta', 'IDEX', 'DDEX', 'Binance'];
+            let listedExchanges = ['EtherDelta', 'ForkDelta', 'IDEX', 'DDEX', 'Binance', 'BambooRelay', 'TokenJar', 'TokenStore'];
             for (let i = 0; i < listedExchanges.length; i++) {
                 let exchange = listedExchanges[i];
                 if (x[exchange]) {
@@ -1829,6 +1829,12 @@ DeltaBalances.prototype.addressName = function (addr, showAddr) {
     else if (lcAddr == this.config.contractEthenAddr) {
         return 'ETHEN ' + (showAddr ? lcAddr : '');
     }
+    else if (lcAddr == this.config.contractSingularxAddr) {
+        return 'SingularX ' + (showAddr ? lcAddr : '');
+    }
+    else if (lcAddr == this.config.contractEthercAddr) {
+        return 'Etherc ' + (showAddr ? lcAddr : '');
+    }
     else if (lcAddr == this.config.contractDecentrexAddr) {
         return 'Decentrex ' + (showAddr ? lcAddr : '');
     } else if (lcAddr == this.config.idexAdminAddr) {
@@ -1883,6 +1889,8 @@ DeltaBalances.prototype.isExchangeAddress = function (addr) {
         //    || lcAddr === this.config.contractDexyAddr
         //    || lcAddr === this.config.contractDexy2Addr
         || lcAddr === this.config.contractEthenAddr
+	|| lcAddr === this.config.contractSingularxAddr
+	|| lcAddr === this.config.contractEthercAddr
     ) {
         return true;
     } else {
@@ -1980,7 +1988,7 @@ DeltaBalances.prototype.processUnpackedEvent = function (unpacked, myAddr) {
                     let makerFee = new BigNumber(0);
                     const ether1 = new BigNumber(1000000000000000000); // 1 ether in wei
 
-                    if (exchange == 'EtherDelta ' || exchange == 'Decentrex ' || exchange == 'Token store ') {
+                    if (exchange == 'EtherDelta ' || exchange == 'Decentrex ' || exchange == 'Token store ' || exchange == 'SingularX ') {
                         takerFee = new BigNumber(3000000000000000); //0.3% fee in wei
                     } else if (exchange == 'Enclaves ') {
                         let exchangeNum = Number(unpacked.events[6].value);
@@ -3214,7 +3222,12 @@ DeltaBalances.prototype.makeTokenPopover = function (token) {
                         + '</li><li>' + utility.forkDeltaURL(token, true)
                         + '</li><li>' + utility.tokenStoreURL(token, true)
                         + '</li><li>' + utility.idexURL(token, true)
-                        + '</li><li>' + utility.ddexURL(token, true)
+			+ '</li><li>' + utility.ddexURL(token, true)
+                        + '</li><li>' + utility.ethenURL(token, true)
+			+ '</li><li>' + utility.bamboorelayURL(token, true)
+			+ '</li><li>' + utility.tokenjarURL(token, true)
+			+ '</li><li>' + utility.singularxURL(token, true)
+			+ '</li><li>' + utility.ethercURL(token, true)
                         + '</li></ul>';
 
 
